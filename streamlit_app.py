@@ -158,7 +158,7 @@ with st.sidebar:
     if data_choice == "📦 Built-in CSV":
         if os.path.exists(BUILTIN_CSV):
             size_mb = os.path.getsize(BUILTIN_CSV) / 1024 / 1024
-            st.caption(f"`consolidated_results3_clean.csv` ({size_mb:.1f} MB)")
+            st.caption(f"`consolidated_cleand.csv` ({size_mb:.1f} MB)")
             if st.button("⚡ Load Data", use_container_width=True, type="primary"):
                 with st.spinner("Building indexes & knowledge graph…"):
                     agent = get_table_agent()
