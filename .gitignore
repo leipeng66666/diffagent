@@ -59,6 +59,7 @@ project2_zeolite/output/
 # Data files (except committed source data)
 data/vector_db/
 *.csv
+!data/consolidated_cleand.csv
 !data/consolidated_results3_clean.csv
 
 # Generated images / HTML

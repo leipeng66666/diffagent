@@ -128,7 +128,7 @@ for key, default in {
     if key not in st.session_state:
         st.session_state[key] = default
 
-BUILTIN_CSV = "data/consolidated_results3_clean.csv"
+BUILTIN_CSV = "data/consolidated_cleand.csv"
 api_key = api_settings["OPENAI_API_KEY"]
 
 # ═══════════════════════════════════════════════════════════════
