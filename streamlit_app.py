@@ -135,7 +135,7 @@ api_key = api_settings["OPENAI_API_KEY"]
 # SIDEBAR
 # ═══════════════════════════════════════════════════════════════
 with st.sidebar:
-        st.title("🧪 DiffAgent")
+    st.title("🧪 DiffAgent")
 
     # ── API status ──
     if api_key:
