@@ -1,5 +1,5 @@
 """
-Streamlit Web Application - Table Data Visualization Q&A AI Agent
+Streamlit Web Application - DiffAgent
 Run: streamlit run streamlit_app.py
 
 API key protection:
@@ -17,8 +17,8 @@ import io
 # PAGE CONFIG
 # ═══════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="Table Q&A AI Agent",
-    page_icon="📊",
+    page_title="DiffAgent",
+    page_icon="🧪",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -135,8 +135,7 @@ api_key = api_settings["OPENAI_API_KEY"]
 # SIDEBAR
 # ═══════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/artificial-intelligence.png", width=64)
-    st.title("Table Q&A Agent")
+        st.title("🧪 DiffAgent")
 
     # ── API status ──
     if api_key:
@@ -222,10 +221,10 @@ with st.sidebar:
 # ═══════════════════════════════════════════════════════════════
 # MAIN AREA
 # ═══════════════════════════════════════════════════════════════
-st.title("📊 Data Q&A with LLM")
+st.title("📊 DiffAgent")
 st.caption(
-    "Ask natural-language questions about your data. "
-    "The AI will query, analyze, rank, and visualize zeolite separation data."
+    "Ask natural-language questions about molecular diffusion data. "
+    "AI-powered ranking, comparison, and analysis for zeolite separation research."
 )
 
 # ── Data Preview ──
