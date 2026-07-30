@@ -54,7 +54,7 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 # ── Cached TableAgent ──
-_APP_VERSION = "v21"
+_APP_VERSION = "v22"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(cache_version: str):
@@ -167,6 +167,9 @@ if st.session_state.data_loaded:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg.get("viz_image"):
+            import base64 as _b64
+            st.image(_b64.b64decode(msg["viz_image"]), use_container_width=True)
         if msg.get("viz"):
             st.plotly_chart(msg["viz"], use_container_width=True)
 
@@ -192,9 +195,19 @@ if prompt := st.chat_input(placeholder="Ask about the data…", disabled=prompt_
                 answer = result["response"].get("answer", "(no answer)")
                 ph.markdown(answer)
                 msg = {"role": "assistant", "content": answer}
+
+                # Handle code-generated visualization (base64 PNG from _process_visualization_query)
+                viz_single = result.get("visualization")
+                if viz_single and viz_single.get("image"):
+                    import base64 as _b64
+                    img_bytes = _b64.b64decode(viz_single["image"])
+                    st.image(img_bytes, caption=viz_single.get("title", ""), use_container_width=True)
+                    msg["viz_image"] = viz_single["image"]  # persist for replay
+
                 for viz in result.get("visualizations", []):
                     if viz.get("type") == "plotly" and viz.get("figure"):
                         st.plotly_chart(viz["figure"], use_container_width=True)
+                        msg["viz"] = viz  # persist for replay
             else:
                 ph.error(f"❌ {result.get('message', 'Unknown error')}")
                 msg = {"role": "assistant", "content": f"❌ {result.get('message', '?')}"}
