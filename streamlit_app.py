@@ -238,7 +238,8 @@ with st.sidebar:
 st.title("📊 DiffAgent")
 st.caption(
     "Ask natural-language questions about molecular diffusion data. "
-    "AI-powered ranking, comparison, and analysis for zeolite separation research."
+    "AI-powered ranking, comparison, and analysis for zeolite separation research. "
+    "— *v7: ∞ → inf fix*"
 )
 
 # ── Data Preview ──

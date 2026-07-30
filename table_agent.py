@@ -81,43 +81,32 @@ class TableAgent:
     def load_table(self, file_path: str) -> Dict[str, Any]:
         """Load table data"""
         logger.info(f"Loading table file: {file_path}")
-        
+
+        # Load data
+        self.current_data = self.data_extractor.load_table(file_path)
+        self.current_file_path = file_path
+
+        # Generate data summary
+        self.data_summary = self.data_extractor.get_data_summary(self.current_data)
+
+        # Build RAG index
+        self.rag_engine.index_data(self.current_data, os.path.basename(file_path))
+
+        # Build GraphRAG knowledge graph
         try:
-            # Load data
-            self.current_data = self.data_extractor.load_table(file_path)
-            self.current_file_path = file_path
-            
-            # Generate data summary
-            self.data_summary = self.data_extractor.get_data_summary(self.current_data)
-            
-            # Build RAG index
-            self.rag_engine.index_data(self.current_data, os.path.basename(file_path))
-            
-            # Build GraphRAG knowledge graph
-            try:
-                self.graphrag_engine.build_knowledge_graph(self.current_data)
-                logger.info("GraphRAG knowledge graph built successfully")
-            except Exception as e:
-                logger.warning(f"GraphRAG knowledge graph build failed: {e}")
-            
-            logger.info(f"Table loaded successfully, shape: {self.current_data.shape}")
-            
-            return {
-                "success": True,
-                "message": "Table loaded successfully",
-                "data_summary": self.data_summary,
-                "shape": self.current_data.shape
-            }
-            
+            self.graphrag_engine.build_knowledge_graph(self.current_data)
+            logger.info("GraphRAG knowledge graph built successfully")
         except Exception as e:
-            import traceback
-            logger.error(f"Failed to load table: {e}")
-            return {
-                "success": False,
-                "message": f"Failed to load table: {str(e)}",
-                "error": str(e),
-                "traceback": traceback.format_exc(),
-            }
+            logger.warning(f"GraphRAG knowledge graph build failed: {e}")
+
+        logger.info(f"Table loaded successfully, shape: {self.current_data.shape}")
+
+        return {
+            "success": True,
+            "message": "Table loaded successfully",
+            "data_summary": self.data_summary,
+            "shape": self.current_data.shape
+        }
     
     def process_query(self, query: str) -> Dict[str, Any]:
         """Process user query (auto-routes between GraphRAG and QA based on LLM understanding)"""
