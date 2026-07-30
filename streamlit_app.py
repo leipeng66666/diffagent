@@ -106,17 +106,19 @@ def load_data(agent, file_path: str) -> bool:
         st.error(f"Loading crashed: {e}")
         st.code(traceback.format_exc())
         return False
-    if result.get("success"):
-        shape = f"{result.get('shape', ['?', '?'])[0]} rows × {result.get('shape', ['?', '?'])[1]} cols"
-        st.session_state.data_shape = shape
-        return True
-    err = result.get("error") or result.get("message", "Unknown error")
-    import traceback
-    err_tb = result.get("traceback", "")
-    st.error(f"Failed to load: {err}")
-    if err_tb:
-        st.code(err_tb)
-    return False
+    if not result.get("success"):
+        err = result.get("error") or result.get("message", "Unknown error")
+        st.error(f"Failed to load: {err}")
+        # Show traceback from result, or note that none was captured
+        err_tb = result.get("traceback", "")
+        if err_tb:
+            st.code(err_tb)
+        else:
+            st.caption("_(No traceback captured — full traceback will appear after next deployment)_")
+        return False
+    shape = f"{result.get('shape', ['?', '?'])[0]} rows × {result.get('shape', ['?', '?'])[1]} cols"
+    st.session_state.data_shape = shape
+    return True
 
 def ensure_data_loaded(agent) -> bool:
     """Re-load data into agent if it was lost (e.g. after agent re-init)."""
