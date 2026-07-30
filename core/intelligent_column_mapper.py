@@ -368,6 +368,14 @@ Examples:
             fb["specific_zeolite"] = understanding.get("specific_zeolite")
             fb["entity_count"] = understanding.get("entity_count", 0)
             fb["route"] = understanding.get("route", "qa")
+            # CRITICAL: override fallback's keyword-detected materials with LLM's
+            # understanding result. The LLM knows chemical synonyms (e.g.
+            # para-xylene → 1,4-dimethylbenzene) that the hardcoded keyword list
+            # misses. Without this, GraphRAG anchor is empty → falls to QA.
+            if understanding.get("molecules"):
+                fb["detected_materials"] = understanding["molecules"]
+                fb["material_keywords"] = self._generate_material_keywords(understanding["molecules"])
+                logger.info(f"Fallback: using LLM-detected materials: {understanding['molecules']}")
             return fb
 
         # Build result (backward-compatible keys + LLM query understanding)
@@ -465,6 +473,12 @@ Examples:
             'hydrogen': ['hydrogen', 'h2', '氢气', 'dihydrogen'],
             'carbon monoxide': ['carbon monoxide', 'co ', '一氧化碳'],
             'water': ['water', 'h2o', '水'],
+            'ethylene': ['ethylene', 'ethene', 'c2h4', '乙烯'],
+            'propylene': ['propylene', 'propene', 'c3h6', '丙烯'],
+            'ethanol': ['ethanol', 'ethyl alcohol', 'c2h5oh', '乙醇'],
+            '1,4-dimethylbenzene': ['1,4-dimethylbenzene', 'p-xylene', 'para-xylene', '对二甲苯',
+                                      'para xylene', '4-dimethylbenzene', 'pxylene', 'p xylene'],
+            'lead': ['lead', 'pb2', 'pb+2', 'pb²⁺', 'pb2+', 'lead ion', '铅', '铅离子', 'pb'],
         }
         for mol, keywords in mol_hints.items():
             if any(kw in query_lower for kw in keywords):

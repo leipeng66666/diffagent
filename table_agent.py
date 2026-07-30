@@ -310,6 +310,17 @@ You MUST:
             # Keep context focused: send only filtered table data (no overview paragraph)
             enhanced_context = f"""{data_table}
 
+========================================
+COMPARISON NOTE FOR LLM
+========================================
+- Computational (MD/MC/DFT) diffusion coefficients are typically SEVERAL ORDERS OF MAGNITUDE larger
+  than experimental measurements (PFG NMR, QENS, permeation, uptake). Do NOT compare raw D values
+  across different method categories — rank within the same method type or use log-scale aggregation.
+- When ranking, prioritize experimental data over computational predictions when both are available
+  for the same zeolite/molecule system.
+- Check the 'method_category' and 'experimental_method' columns to distinguish data sources.
+========================================
+
 {material_constraint}"""
             
             # Append Tier 2 predictions to context if fetched
@@ -338,6 +349,17 @@ You MUST:
                 logger.info(f"Reducing to {reduced_rows} rows")
                 data_table = self._generate_data_table(filtered_data, max_rows=reduced_rows)
                 enhanced_context = f"""{data_table}
+
+========================================
+COMPARISON NOTE FOR LLM
+========================================
+- Computational (MD/MC/DFT) diffusion coefficients are typically SEVERAL ORDERS OF MAGNITUDE larger
+  than experimental measurements (PFG NMR, QENS, permeation, uptake). Do NOT compare raw D values
+  across different method categories — rank within the same method type or use log-scale aggregation.
+- When ranking, prioritize experimental data over computational predictions when both are available
+  for the same zeolite/molecule system.
+- Check the 'method_category' and 'experimental_method' columns to distinguish data sources.
+========================================
 
 {material_constraint}"""
                 logger.info(f"✓ Context length after reduction: {len(enhanced_context)} chars")
