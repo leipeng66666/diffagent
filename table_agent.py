@@ -960,7 +960,7 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         if temperature_col:
             filtered_rows = self._filter_similar_temperature(
                 filtered_rows, temperature_col, material_col, zeolite_col, materials,
-                source_data=source_data
+                source_data=source_data, task_cols=task_cols
             )
             logger.info(f"{len(filtered_rows)} rows remaining after temperature pairing")
         else:
@@ -1040,9 +1040,10 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
 
         return result
     
-    def _filter_similar_temperature(self, rows: List[int], temperature_col: str, 
+    def _filter_similar_temperature(self, rows: List[int], temperature_col: str,
                                    material_col: str, zeolite_col: str,
-                                   materials: List[str], source_data=None) -> List[int]:
+                                   materials: List[str], source_data=None,
+                                   task_cols: dict = None) -> List[int]:
         """
         Filter data with similar temperatures: for the same zeolite, find pairs with
         similar temperatures between different materials, sorted by diffusion coefficient
@@ -1050,24 +1051,37 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         """
         if not rows or not zeolite_col or not material_col:
             return rows
-        
+
         # Use provided source_data or fall back to current_data
         data = source_data if source_data is not None else self.current_data
-        
+
         import re
-        
-        # Find diffusion coefficient column and unit column
-        value_col = None
-        unit_col = None
-        for col in data.columns:
-            if 'converted_value' in col.lower() or col.lower() == 'value':
-                value_col = col
-                if 'converted' in col.lower():
+
+        # Use LLM-mapped columns from task_cols if available, else fall back to search
+        if task_cols:
+            value_col = (task_cols.get('diffusion_coefficient_value')
+                         or task_cols.get('value'))
+            unit_col = (task_cols.get('diffusion_coefficient_unit')
+                        or task_cols.get('unit'))
+        else:
+            value_col = None
+            unit_col = None
+
+        # Fallback: hardcoded column search if task_cols didn't provide them
+        if not value_col:
+            for col in data.columns:
+                if ('diffusion_coefficient_value' in col.lower()
+                    or 'converted_value' in col.lower()
+                    or col.lower() == 'value'):
+                    value_col = col
                     break
-        for col in data.columns:
-            if 'converted_unit' in col.lower() or col.lower() == 'unit':
-                unit_col = col
-                break
+        if not unit_col:
+            for col in data.columns:
+                if ('diffusion_coefficient_unit' in col.lower()
+                    or 'converted_unit' in col.lower()
+                    or col.lower() == 'unit'):
+                    unit_col = col
+                    break
         
         if not value_col:
             logger.warning("Diffusion coefficient column not found, cannot calculate difference")
