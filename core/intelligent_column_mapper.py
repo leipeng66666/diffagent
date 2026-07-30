@@ -276,26 +276,53 @@ Examples:
                 result_text = result_text.split("```")[1].split("```")[0].strip()
 
             result = json.loads(result_text)
+            entity_count = result.get("entity_count", len(result.get("molecules", [])))
             return {
                 "molecules": result.get("molecules", []),
                 "query_type": result.get("query_type", "general"),
                 "is_separation": result.get("is_separation", False),
                 "specific_zeolite": result.get("specific_zeolite"),
                 "needs_prediction": result.get("needs_prediction", False),
-                "entity_count": result.get("entity_count", len(result.get("molecules", []))),
-                "route": result.get("route", "qa"),
+                "entity_count": entity_count,
+                "route": "graphrag" if entity_count <= 1 else "qa",
             }
         except Exception as e:
             logger.error(f"Query understanding failed: {e}, falling back to keyword extraction")
-            return {"molecules": self._extract_molecules_fallback(query),
+            fb_mols = self._extract_molecules_fallback(query)
+            fb_entity = 1 if fb_mols else 0
+            return {"molecules": fb_mols,
                     "query_type": "general", "is_separation": False, "specific_zeolite": None,
-                    "needs_prediction": False, "entity_count": 0, "route": "qa"}
+                    "needs_prediction": False, "entity_count": fb_entity,
+                    "route": "graphrag" if fb_entity <= 1 else "qa"}
 
     def _extract_molecules_fallback(self, query: str) -> List[str]:
         """Keyword-based fallback when LLM query understanding fails."""
         query_lower = query.lower()
         molecules = []
-        # Chemical formula detection
+
+        # --- Domain → molecule mapping (domain queries: "natural gas", "天然气" etc.) ---
+        domain_map = {
+            "natural gas": ["methane", "carbon dioxide"],
+            "天然气": ["methane", "carbon dioxide"],
+            "air separation": ["nitrogen", "dioxygen"],
+            "空气分离": ["nitrogen", "dioxygen"],
+            "carbon capture": ["carbon dioxide"],
+            "碳捕集": ["carbon dioxide"],
+            "dehydration": ["water"],
+            "脱水": ["water"],
+            "desalination": ["water"],
+            "海水淡化": ["water"],
+            "flue gas": ["carbon dioxide", "nitrogen"],
+            "烟气": ["carbon dioxide", "nitrogen"],
+            "biogas": ["methane", "carbon dioxide"],
+            "沼气": ["methane", "carbon dioxide"],
+        }
+        for domain, mols in domain_map.items():
+            if domain in query_lower:
+                molecules.extend(mols)
+                break  # first match only
+
+        # Chemical formula detection (CO2, CH4, N2 etc.)
         import re
         for m in re.findall(r'\b([A-Z][a-z]?\d*(?:[A-Z][a-z]?\d*)*)\b', query):
             noise = {'i', 'ii', 'iii', 'iv', 'v', 'vi', 'mol', 'log', 'max', 'min',
@@ -358,6 +385,15 @@ Examples:
         understanding = self._understand_query(query)
         detected_molecules = understanding.get("molecules", [])
         logger.info(f"LLM query understanding: {understanding}")
+
+        # LLM sometimes returns empty molecules for domain queries (e.g. "natural gas
+        # purification"). Patch with keyword/domain fallback so GraphRAG has an anchor.
+        if not detected_molecules:
+            fb_mols = self._extract_molecules_fallback(query)
+            if fb_mols:
+                logger.info(f"LLM returned no molecules — keyword fallback found: {fb_mols}")
+                detected_molecules = fb_mols
+                understanding["molecules"] = fb_mols
 
         # If LLM layer returned no useful roles, use fallback
         if not task_cols:
