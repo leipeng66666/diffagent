@@ -1,0 +1,7 @@
+{
+  "query": "Which zeolite exhibits stronger separation performance for nitrogen and oxygen at similar temperatures?",
+  "answer": "The provided dataset contains **no oxygen diffusion data**; it exclusively compares **nitrogen vs carbon dioxide** separation performance.  \nTherefore, a direct ranking for nitrogen/oxygen separation cannot be derived.  \n\nIf the intention was to assess the nitrogen/carbon dioxide separation performance, the top zeolite with the strongest experimental evidence is **LTA-Na**, showing a maximum Log10(ratio) of **7.50 orders of magnitude** between nitrogen (1.59E-08 m²/s at 298 K, DOI: 10.1016/j.micromeso.2023.112442) and carbon dioxide (5.05E-16 m²/s at 298 K, DOI: 10.1016/j.memsci.2009.10.005).  \n\nGiven the absence of oxygen data, no legitimate comparison for nitrogen vs oxygen can be made from this dataset.",
+  "method": "qa",
+  "route": "?",
+  "success": true
+}

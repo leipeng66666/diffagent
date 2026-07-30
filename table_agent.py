@@ -179,36 +179,46 @@ class TableAgent:
             # =================================================================
             # AUTO-ROUTE: GraphRAG for single-entity / zero-entity exploration
             # =================================================================
+            # entity_count=1: user named one specific entity → GraphRAG locks onto it
+            #   as anchor for focused exploration (e.g. "Tell me about MFI", "CO2 diffusion")
+            # entity_count=0: user described a DOMAIN without naming any specific entity
+            #   (e.g. "natural gas purification") → GraphRAG explores the FULL domain using
+            #   ALL inferred molecules, NOT locking onto a single guest.
+            # entity_count>=2: multi-entity comparison → QA pipeline
+            # =================================================================
             if query_route == "graphrag":
                 anchor_type = None
                 anchor_value = None
+                all_inferred_guests = []  # for entity_count=0: all inferred molecules
 
-                if detected_molecules:
-                    anchor_type = "guest"
-                    anchor_value = detected_molecules[0]
-                elif mapping.get("specific_zeolite"):
-                    anchor_type = "zeolite"
-                    anchor_value = mapping.get("specific_zeolite")
-                # Domain queries (e.g. "natural gas purification") now route here too —
-                # inferred molecules (methane, CO2) provide the anchor for GraphRAG exploration
-
-                # entity_count=0: no explicit entities, but query is about zeolites/diffusion.
-                # Try keyword extraction from query as a last-resort anchor.
-                if not anchor_type and entity_count == 0:
-                    kw_mols = self.column_mapper._extract_molecules_fallback(query)
-                    if kw_mols:
+                if entity_count == 1:
+                    # Focused: lock onto the single explicitly-named entity
+                    if detected_molecules:
                         anchor_type = "guest"
-                        anchor_value = kw_mols[0]
-                        logger.info(f"→ entity_count=0: extracted anchor '{anchor_value}' from query keywords")
+                        anchor_value = detected_molecules[0]
+                    elif mapping.get("specific_zeolite"):
+                        anchor_type = "zeolite"
+                        anchor_value = mapping.get("specific_zeolite")
 
-                if anchor_type and anchor_value:
-                    logger.info(f"→ GraphRAG route: anchor={anchor_type}:{anchor_value}")
+                elif entity_count == 0:
+                    # Domain query: explore broadly — collect ALL inferred molecules as
+                    # multi-anchor context for a complete domain picture
+                    all_inferred_guests = detected_molecules  # from LLM or domain fallback
+                    if not all_inferred_guests:
+                        all_inferred_guests = self.column_mapper._extract_molecules_fallback(query)
+                    if all_inferred_guests:
+                        logger.info(f"→ entity_count=0, domain exploration with inferred guests: {all_inferred_guests}")
+                    else:
+                        logger.warning("entity_count=0 but no inferred guests found, falling back to QA")
+                        # Fall through to QA below
+
+                if entity_count == 1 and anchor_type and anchor_value:
+                    logger.info(f"→ GraphRAG route (focused): anchor={anchor_type}:{anchor_value}")
                     graph_result = self.graphrag_engine.analyze_with_project_graph(
                         query, anchor_type, anchor_value
                     )
                     if "error" in graph_result:
                         logger.warning(f"GraphRAG failed: {graph_result['error']}, falling back to QA")
-                        # Fall through to standard QA pipeline below
                     else:
                         return {
                             "success": True,
@@ -225,7 +235,32 @@ class TableAgent:
                             "method_used": "graphrag",
                             "graph_info": graph_result.get("graph_info", {}),
                         }
-                else:
+
+                elif entity_count == 0 and all_inferred_guests:
+                    # Domain query: explore all inferred guests for a complete picture
+                    graph_result = self.graphrag_engine.analyze_domain(
+                        query, all_inferred_guests
+                    )
+                    if "error" in graph_result:
+                        logger.warning(f"GraphRAG domain analysis failed: {graph_result['error']}, falling back to QA")
+                    else:
+                        return {
+                            "success": True,
+                            "query": query,
+                            "parsed_query": {
+                                "query": query,
+                                "intent": query_mode,
+                                "comparison_info": {"materials": detected_molecules},
+                                "route": "graphrag",
+                            },
+                            "response": graph_result.get("response", {}),
+                            "visualizations": graph_result.get("visualizations", []),
+                            "insights": {},
+                            "method_used": "graphrag",
+                            "graph_info": graph_result.get("graph_info", {}),
+                        }
+
+                if entity_count == 1:
                     logger.warning("GraphRAG route but no anchor found, falling back to QA")
 
             # Trigger Tier 2 predictions early if LLM says this query needs them

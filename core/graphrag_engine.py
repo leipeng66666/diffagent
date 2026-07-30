@@ -549,3 +549,125 @@ Rules:
             logger.error(f"Project graph analysis failed: {e}")
             return {"error": str(e)}
 
+    def analyze_domain(self, query: str, guest_list: List[str]) -> Dict[str, Any]:
+        """Entity-count=0 domain exploration: merge subgraphs from ALL inferred guests.
+
+        Unlike analyze_with_project_graph which anchors on a single entity for focused
+        exploration, this method explores the UNION of multiple inferred guests to give
+        a complete picture of the domain (e.g. "natural gas purification" includes CH4,
+        CO2, H2O data together, without locking onto just one molecule).
+
+        Args:
+            query: Original user query
+            guest_list: All inferred guest molecules from the domain (e.g. ["methane",
+                        "carbon dioxide"] for "natural gas")
+        """
+        if not self.project_graph_builder:
+            return {"error": "Project graph builder not available"}
+
+        if not self._project_graph_ready:
+            try:
+                self.project_graph_builder.build()
+                self._project_graph_ready = True
+            except Exception as e:
+                return {"error": f"Failed to build project graph: {e}"}
+
+        if not guest_list:
+            return {"error": "No inferred guests for domain analysis"}
+
+        # Merge subgraphs from ALL inferred guests
+        all_nodes = set()
+        all_edges = {}
+        all_tables = []
+        summaries = []
+
+        for guest in guest_list[:5]:  # Cap at 5 guests to avoid excessive context
+            subgraph = self.project_graph_builder.get_subgraph(
+                "guest", guest, max_depth=2
+            )
+            if subgraph.get("error"):
+                logger.warning(f"Subgraph failed for '{guest}': {subgraph['error']}")
+                continue
+
+            summaries.append(f"## Guest: {guest}\n{subgraph['summary']}")
+            all_nodes.update(n["id"] for n in subgraph.get("nodes", []))
+            for edge in subgraph.get("edges", []):
+                key = (edge["source"], edge["target"], edge.get("type", ""))
+                if key not in all_edges:
+                    all_edges[key] = edge
+            for tbl in subgraph.get("tables", [])[:2]:
+                all_tables.append(tbl)
+
+        if not summaries:
+            return {"error": f"Could not extract subgraphs for any of: {guest_list}"}
+
+        # Build merged context
+        context_parts = [
+            f"DOMAIN EXPLORATION: This is a domain-level query — the user asked about a "
+            f"broad topic ({', '.join(guest_list[:5])}) without specifying any single entity. "
+            f"The data below spans ALL related guests in this domain. Compare and synthesize "
+            f"across them to give a COMPLETE picture, not focused on just one molecule.\n",
+            "\n\n".join(summaries),
+        ]
+
+        # Add combined entity overview
+        entities = self.project_graph_builder.get_available_entities()
+        context_parts.append(
+            f"\nKnowledge base: {entities['guest_count']} guest molecules, "
+            f"{entities['zeolite_count']} zeolite structures."
+        )
+
+        for tbl in all_tables[:5]:
+            context_parts.append(f"\n--- Table: {tbl['name']} ---")
+            context_parts.append(tbl["csv_text"][:2000])
+
+        enhanced_context = "\n".join(context_parts)
+
+        # Broader system prompt for domain-level synthesis
+        system_prompt = f"""You are a materials science expert analyzing zeolite diffusion data across a domain.
+
+The user asked about a DOMAIN (not a single molecule), so the data spans multiple related guest molecules: {', '.join(guest_list[:5])}.
+
+Output format:
+1. Domain overview: What guest molecules and zeolites are involved in this domain? What does the data cover?
+2. Cross-guest comparison: How do diffusion characteristics differ between the guests in this domain? Which guest/zeolite combinations stand out?
+3. Best candidates: For the user's goal (purification/separation/removal), which zeolites perform best across the relevant guests? Consider ALL guests together.
+4. Patterns: What patterns emerge when comparing across guests — pore size effects, temperature sensitivity, guest size correlations?
+5. Data gaps: What key guests or zeolite types are MISSING from this domain data?
+
+Rules:
+- Synthesize across ALL guests in the domain — do NOT focus on just one
+- Use mean_logD values and sample counts (n) from the data
+- Rank zeolites considering performance across multiple relevant guests
+- Note which data is experimental vs computational
+- Do not invent data not present in the provided context"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{enhanced_context}\n\nQuestion: {query}"}
+        ]
+
+        try:
+            response = self.llm_integration._call_llm(messages, "analysis")
+            answer = response["content"]
+
+            return {
+                "response": {
+                    "answer": answer,
+                    "model": self.llm_integration.model,
+                    "tokens_used": response["total_tokens"],
+                    "response_type": "domain_analysis"
+                },
+                "visualizations": [],
+                "graph_info": {
+                    "anchor": f"domain:{','.join(guest_list[:5])}",
+                    "node_count": len(all_nodes),
+                    "edge_count": len(all_edges),
+                    "source": "domain_exploration",
+                    "tables_count": len(all_tables),
+                }
+            }
+        except Exception as e:
+            logger.error(f"Domain analysis failed: {e}")
+            return {"error": str(e)}
+
