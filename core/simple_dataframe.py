@@ -19,7 +19,11 @@ class SimpleSeries:
     for pandas (e.g. df[col].dropna()) works with SimpleDataFrame too."""
 
     def __init__(self, values: list, name: str = ""):
-        self._values = list(values)
+        # Store reference directly — SimpleSeries is read-only so no copy needed.
+        # This is critical for performance: df[col] is called thousands of times
+        # in filtering/sorting loops, and copying 3389 elements each time was
+        # causing O(n*m) memory allocation and CPU churn.
+        self._values = values if isinstance(values, list) else list(values)
         self.name = name
 
     @property
