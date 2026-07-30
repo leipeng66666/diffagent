@@ -177,7 +177,7 @@ class TableAgent:
                         f"predict={needs_prediction}, route={query_route}, entities={entity_count}")
 
             # =================================================================
-            # AUTO-ROUTE: GraphRAG for single-entity exploration queries
+            # AUTO-ROUTE: GraphRAG for single-entity / zero-entity exploration
             # =================================================================
             if query_route == "graphrag":
                 anchor_type = None
@@ -191,6 +191,15 @@ class TableAgent:
                     anchor_value = mapping.get("specific_zeolite")
                 # Domain queries (e.g. "natural gas purification") now route here too —
                 # inferred molecules (methane, CO2) provide the anchor for GraphRAG exploration
+
+                # entity_count=0: no explicit entities, but query is about zeolites/diffusion.
+                # Try keyword extraction from query as a last-resort anchor.
+                if not anchor_type and entity_count == 0:
+                    kw_mols = self.column_mapper._extract_molecules_fallback(query)
+                    if kw_mols:
+                        anchor_type = "guest"
+                        anchor_value = kw_mols[0]
+                        logger.info(f"→ entity_count=0: extracted anchor '{anchor_value}' from query keywords")
 
                 if anchor_type and anchor_value:
                     logger.info(f"→ GraphRAG route: anchor={anchor_type}:{anchor_value}")

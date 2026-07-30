@@ -244,7 +244,7 @@ Field rules:
 - needs_prediction: true ONLY when ALL of: (a) query_type is "ranking", (b) 2+ molecules mentioned, (c) no specific zeolite mentioned
 - entity_count: count ONLY entities EXPLICITLY mentioned by the user. Inferred/implied molecules from application context do NOT increase entity_count — they are context clues, not entities the user asked about. A specific zeolite = 1 entity. A specific guest molecule = 1 entity. A specific application domain (e.g. "natural gas purification", "dehydration") = 1 entity.
   "tell me about MFI" → 1 (zeolite). "CO2 diffusion" → 1 (molecule). "best zeolite for para-xylene" → 1 (molecule). "natural gas purification" → 1 (domain — inferred molecules like methane/CO2 do NOT add to count). "天然气" → 1 (domain). "CO2 in MFI" → 2 (molecule + zeolite). "CO2 vs CH4" → 2 (two molecules). "best zeolite for CO2/CH4 separation" → 2 (two molecules explicitly named).
-- route: "graphrag" when entity_count <= 1 (single entity/domain → GraphRAG exploratory analysis). "qa" for entity_count > 1 (multi-entity comparisons need direct data comparison).
+- route: "graphrag" when entity_count <= 1 — INCLUDES entity_count=0 (no named entity but query is about zeolites/diffusion → GraphRAG gives a general overview of the dataset anchored on query context). "qa" ONLY for entity_count > 1 (multi-entity comparisons needing direct data comparison).
 
 Examples:
 - "Which zeolite is best for separating CO2 and CH4?" → {{"molecules":["carbon dioxide","methane"],"query_type":"ranking","is_separation":true,"specific_zeolite":null,"needs_prediction":true,"entity_count":2,"route":"qa"}}
@@ -257,7 +257,7 @@ Examples:
 - "Which molecular sieve is most favorable for the selectivity of para-xylene?" → {{"molecules":["1,4-dimethylbenzene"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "分析MFI分子筛中扩散的规律" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "分析二氧化碳在不同分子筛中的扩散规律" → {{"molecules":["carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
-- "show all data above 300K" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"qa"}}
+- "show all data above 300K" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"graphrag"}}
 - "分析天然气的扩散" → {{"molecules":["methane","carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "天然气分离性能" → {{"molecules":["methane","carbon dioxide"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 """
