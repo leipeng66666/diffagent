@@ -436,20 +436,44 @@ class SimpleDataFrame:
         """Select columns of specific data types"""
         if not self.columns:
             return SimpleDataFrame()
-        
+
+        import numpy as np
+
+        # Normalize type specs to strings — col_type from dtypes is 'float64'/'object',
+        # but callers may pass numpy classes like np.number or np.float64.
+        def _normalize(spec):
+            """Convert numpy type classes to their string dtype names."""
+            if spec is np.number:
+                return {'float64', 'int64', 'float32', 'int32', 'float16', 'int16',
+                        'int8', 'uint8', 'uint16', 'uint32', 'uint64', 'complex64', 'complex128'}
+            if isinstance(spec, type):
+                try:
+                    return {np.dtype(spec).name}
+                except TypeError:
+                    pass
+            if isinstance(spec, str):
+                return {spec}
+            return set()
+
         selected_cols = []
         for col in self.columns:
             col_type = self.dtypes.get(col, 'object')
-            
-            if include:
-                if col_type in include:
+
+            if include is not None:
+                allowed = set()
+                for inc in include:
+                    allowed |= _normalize(inc)
+                if col_type in allowed:
                     selected_cols.append(col)
-            elif exclude:
-                if col_type not in exclude:
+            elif exclude is not None:
+                forbidden = set()
+                for exc in exclude:
+                    forbidden |= _normalize(exc)
+                if col_type not in forbidden:
                     selected_cols.append(col)
             else:
                 selected_cols.append(col)
-        
+
         # 创建新的DataFrame
         new_data = {col: self.data[col] for col in selected_cols}
         return SimpleDataFrame(new_data)

@@ -58,14 +58,13 @@ COLUMN SEMANTICS (very important - use the correct column for filtering):
 {column_hints}
 
 Important understanding:
-1. To filter by ZEOLITE TYPE (e.g. MFI, FAU, LTA), use the 'zeolite_formula' column
-   - Example: df[df['zeolite_formula'].str.contains('MFI', case=False, na=False)]
-2. To filter by GAS/MATERIAL (e.g. methane, CO2, water), use the 'material_formula' column
-   - Example: df[df['material_formula'].str.contains('methane', case=False, na=False)]
-3. Temperature column 'temperature_formula' contains strings like '300K', '298K-333K', 'Variable'
-   - Extract numeric: df['temperature_formula'].str.extract(r'(\d+(?:\.\d+)?)', expand=False).astype(float)
-   - Drop rows where extraction fails or result is NaN
-   - Also drop 'Variable' rows before extraction
+1. To filter by ZEOLITE TYPE (e.g. MFI, FAU, LTA), use the 'std_zeolite_name' column
+   - Example: df[df['std_zeolite_name'].str.contains('MFI', case=False, na=False)]
+2. To filter by GAS/MATERIAL (e.g. methane, CO2), use the 'guest_molecule' column
+   - Example: df[df['guest_molecule'].str.contains('methane', case=False, na=False)]
+3. Numeric columns (temperature_value, diffusion_coefficient_value, KD_A, PLD_A, etc.)
+   are already pre-converted to float64. Use them directly — no str.extract needed.
+   Drop NaN rows before plotting: df = df.dropna(subset=['temperature_value', ...])
 4. Histogram MUST use ax.hist() or sns.histplot(), do NOT use line chart or bar chart
 5. Always check if filtered data is empty before plotting, and print a warning if so
 
@@ -74,7 +73,7 @@ Requirements:
 2. Code must use matplotlib or seaborn library
 3. Code must include the following parts:
    - Import necessary libraries
-   - Data filtering using CORRECT column (zeolite_formula for zeolite, material_formula for gas)
+   - Data filtering using CORRECT column (std_zeolite_name for zeolite, guest_molecule for gas)
    - Data preprocessing (extract numeric values, drop NaN/Variable)
    - Validate filtered data is not empty
    - Create chart
