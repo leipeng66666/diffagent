@@ -242,8 +242,8 @@ Field rules:
 - is_separation: true ONLY if about separating/distinguishing TWO OR MORE specific molecules from each other. If only ONE molecule is mentioned, is_separation MUST be false even if the word "selectivity" or "separation" appears.
 - specific_zeolite: zeolite code if asking about a SPECIFIC zeolite, else null
 - needs_prediction: true ONLY when ALL of: (a) query_type is "ranking", (b) 2+ molecules mentioned, (c) no specific zeolite mentioned
-- entity_count: count of DISTINCT entities mentioned. A specific zeolite = 1 entity. A specific guest molecule = 1 entity. Count them all.
-  "tell me about MFI" → 1. "CO2 diffusion" → 1. "best zeolite for para-xylene" → 1 (only one molecule). "CO2 in MFI" → 2. "CO2 vs CH4" → 2. "best zeolite for CO2/CH4 separation" → 2.
+- entity_count: count of DISTINCT entities mentioned. A specific zeolite = 1 entity. A specific guest molecule = 1 entity. A specific application domain (e.g. "natural gas purification", "dehydration") = 1 entity. Count them all.
+  "tell me about MFI" → 1. "CO2 diffusion" → 1. "best zeolite for para-xylene" → 1. "natural gas purification" → 1. "CO2 in MFI" → 2. "CO2 vs CH4" → 2. "best zeolite for CO2/CH4 separation" → 2.
 - route: "graphrag" when entity_count == 1 (single-entity exploration — GraphRAG can show all related zeolites/guests). "qa" for entity_count != 1 (comparisons, multi-entity lookups, generic data queries).
 
 Examples:

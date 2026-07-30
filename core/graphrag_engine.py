@@ -222,7 +222,7 @@ class GraphRAGEngine:
                                 corr_matrix[col1][col2] = 0.0
             for i, col1 in enumerate(numeric_cols):
                 for col2 in numeric_cols[i+1:]:
-                    corr = corr_matrix.loc[col1, col2]
+                    corr = corr_matrix[col1][col2]  # SimpleDataFrame-compatible: no .loc
                     if abs(corr) > 0.3:  # Only keep stronger correlations
                         source_id = f"stats_{col1}"
                         target_id = f"stats_{col2}"
