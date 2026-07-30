@@ -552,7 +552,7 @@ You MUST:
             if col_dtype in ['int64', 'float64']:
                 # For numeric columns, calculate statistics
                 try:
-                    numeric_values = [float(v) for v in col_data if v is not None and v != '' and v != 'nan']
+                    numeric_values = [float(str(v).replace('∞', 'inf')) for v in col_data if v is not None and v != '' and v != 'nan']
                     if numeric_values:
                         info.update({
                             "min": min(numeric_values),

@@ -7,6 +7,13 @@ from typing import List, Dict, Any, Union
 import csv
 import json
 
+# Unicode infinity symbol '∞' (U+221E) is not a valid Python float literal.
+# Normalize it to 'inf' so float() can parse it.
+def _safe_float(s: str) -> float:
+    """Convert string to float, normalizing Unicode infinity → 'inf'."""
+    return float(str(s).replace('∞', 'inf'))
+
+
 class SimpleDataFrame:
     """Simple DataFrame alternative implementation"""
     
@@ -141,7 +148,7 @@ class SimpleDataFrame:
             
             # Check if it's a numeric type
             try:
-                float(self.data[col][0])
+                _safe_float(self.data[col][0])
                 dtypes[col] = 'float64'
             except (ValueError, TypeError):
                 dtypes[col] = 'object'
@@ -256,7 +263,7 @@ class SimpleDataFrame:
             if val is None or val == '':
                 continue
             try:
-                values.append(float(val))
+                values.append(_safe_float(val))
             except (ValueError, TypeError):
                 continue
         return values
@@ -271,7 +278,7 @@ class SimpleDataFrame:
         for col in self.columns:
             try:
                 # Try to convert first value to numeric
-                float(self.data[col][0])
+                _safe_float(self.data[col][0])
                 numeric_cols.append(col)
             except (ValueError, TypeError):
                 continue
@@ -303,7 +310,7 @@ class SimpleDataFrame:
         numeric_cols = []
         for col in self.columns:
             try:
-                float(self.data[col][0])
+                _safe_float(self.data[col][0])
                 numeric_cols.append(col)
             except (ValueError, TypeError):
                 continue
@@ -524,7 +531,9 @@ class SimpleDataLoader:
             col_data = []
             for row in data_rows:
                 if i < len(row):
-                    col_data.append(str(row[i]))
+                    # Normalize Unicode infinity symbol '∞' → 'inf' so float() can parse it
+                    val = str(row[i]).replace('∞', 'inf')
+                    col_data.append(val)
                 else:
                     col_data.append('')
             data[header] = col_data

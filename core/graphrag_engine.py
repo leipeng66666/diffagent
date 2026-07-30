@@ -124,7 +124,7 @@ class GraphRAGEngine:
             numeric_values = []
             for val in col_data:
                 try:
-                    numeric_values.append(float(val))
+                    numeric_values.append(float(str(val).replace('∞', 'inf')))
                 except (ValueError, TypeError):
                     continue
             
