@@ -8,6 +8,7 @@ API key protection:
   - Or: set OPENAI_API_KEY environment variable
 """
 import streamlit as st
+import traceback
 
 # ═══════════════════════════════════════════════════════════════
 # PAGE CONFIG — MUST be first Streamlit command
@@ -20,46 +21,45 @@ try:
         initial_sidebar_state="expanded",
     )
 except Exception:
-    pass  # set_page_config may fail if called twice (e.g. watcher reload)
+    pass
 
 # ═══════════════════════════════════════════════════════════════
-# IMMEDIATE VISIBLE OUTPUT — confirms the page is rendering
+# IMMEDIATE VISIBLE OUTPUT
 # ═══════════════════════════════════════════════════════════════
-st.title("🧪 DiffAgent v11 — Diagnostic Mode")
-st.caption("If you can read this, Streamlit is running and rendering content.")
+st.title("🧪 DiffAgent v12")
+st.success("✅ Page loaded. Starting lightweight checks…")
 
-# Track status for display
+# ═══════════════════════════════════════════════════════════════
+# STEP 1: stdlib + pandas (all lightweight)
+# ═══════════════════════════════════════════════════════════════
 _status = []
 
-def _ok(msg):
-    _status.append(("ok", msg))
-
-def _fail(msg):
-    _status.append(("fail", msg))
-
-# ═══════════════════════════════════════════════════════════════
-# STEP 1: Standard library imports
-# ═══════════════════════════════════════════════════════════════
 try:
     import pandas as pd
-    _ok(f"pandas {pd.__version__}")
+    _status.append(("ok", f"pandas {pd.__version__}"))
 except Exception as e:
-    _fail(f"pandas: {e}")
+    _status.append(("fail", f"pandas: {e}"))
 
 try:
-    import os, sys, io, traceback
-    _ok("os, sys, io, traceback")
+    import os, sys, io
+    _status.append(("ok", "os, sys, io"))
 except Exception as e:
-    _fail(f"stdlib: {e}")
+    _status.append(("fail", f"stdlib: {e}"))
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: config.settings
 # ═══════════════════════════════════════════════════════════════
 try:
     from config import settings
-    _ok(f"config.settings (model={settings.OPENAI_MODEL})")
+    _status.append(("ok", f"config.settings (model={settings.OPENAI_MODEL})"))
 except Exception as e:
-    _fail(f"config.settings: {e}\n{traceback.format_exc()}")
+    _status.append(("fail", f"config.settings: {e}"))
+    # Create a minimal fallback
+    class _FallbackSettings:
+        OPENAI_API_KEY = ""
+        OPENAI_BASE_URL = "https://api.deepseek.com/v1"
+        OPENAI_MODEL = "deepseek-v4-pro"
+    settings = _FallbackSettings()
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 3: API settings
@@ -97,75 +97,36 @@ try:
     settings.OPENAI_API_KEY = api_settings["OPENAI_API_KEY"]
     settings.OPENAI_BASE_URL = api_settings["OPENAI_BASE_URL"]
     settings.OPENAI_MODEL = api_settings["OPENAI_MODEL"]
-    _ok(f"API settings loaded (key={'✓' if api_settings['OPENAI_API_KEY'] else '✗'})")
+    _status.append(("ok", f"API key={'✓' if api_settings['OPENAI_API_KEY'] else '✗ (set in secrets)'}"))
 except Exception as e:
-    _fail(f"API settings: {e}\n{traceback.format_exc()}")
+    _status.append(("fail", f"API settings: {e}"))
     api_settings = {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "", "OPENAI_MODEL": ""}
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 4: Core module imports
+# Display status
 # ═══════════════════════════════════════════════════════════════
-_core_modules = [
-    "core.simple_dataframe",
-    "core.semantic_parser",
-    "core.synonym_mapper",
-    "core.data_extractor",
-    "core.rag_engine",
-    "core.llm_integration",
-    "core.visualization_engine",
-    "core.intelligent_column_mapper",
-    "core.intelligent_filter",
-    "core.graphrag_engine",
-    "core.code_generator",
-    "core.prediction_integrator",
-    "core.project_graph_builder",
-]
-for mod_name in _core_modules:
-    try:
-        __import__(mod_name)
-        _ok(mod_name)
-    except Exception as e:
-        _fail(f"{mod_name}: {str(e)[:300]}")
-
-# ═══════════════════════════════════════════════════════════════
-# STEP 5: TableAgent
-# ═══════════════════════════════════════════════════════════════
-try:
-    from table_agent import TableAgent
-    _ok("table_agent.TableAgent")
-except Exception as e:
-    _fail(f"table_agent.TableAgent: {e}\n{traceback.format_exc()}")
-
-# ═══════════════════════════════════════════════════════════════
-# DISPLAY DIAGNOSTIC RESULTS
-# ═══════════════════════════════════════════════════════════════
-with st.expander("🔍 Import Diagnostics", expanded=True):
-    ok_count = sum(1 for s, _ in _status if s == "ok")
+with st.expander("🔍 Startup Diagnostics", expanded=True):
     fail_count = sum(1 for s, _ in _status if s == "fail")
     if fail_count == 0:
-        st.success(f"All {ok_count} imports passed! ✅")
+        st.success(f"All {len(_status)} checks passed ✅")
     else:
-        st.error(f"{ok_count} passed, {fail_count} FAILED ❌")
-
+        st.error(f"{len(_status) - fail_count} passed, {fail_count} FAILED ❌")
     for status, msg in _status:
         if status == "ok":
             st.success(msg)
         else:
             st.error(msg)
+    st.info(
+        "Heavy modules (sentence-transformers, matplotlib, chromadb) "
+        "are loaded lazily when data is first loaded — this is normal."
+    )
 
-# ═══════════════════════════════════════════════════════════════
-# If any core import failed, stop here
-# ═══════════════════════════════════════════════════════════════
 if fail_count > 0:
-    st.error("🛑 Stopped due to import failures above. Fix them and redeploy.")
+    st.error("🛑 Stopped due to failures above.")
     st.stop()
 
-# ═══════════════════════════════════════════════════════════════
-# NORMAL APP BELOW (v11 with error boundaries)
-# ═══════════════════════════════════════════════════════════════
-
 st.divider()
-st.caption("— *v11: diagnostic mode with import verification*")
+st.caption("— *v12: lazy imports + startup diagnostics*")
 
 # ═══════════════════════════════════════════════════════════════
 # CSS
@@ -177,14 +138,15 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# CACHED RESOURCES
+# CACHED RESOURCES — heavy imports happen INSIDE here (lazy!)
 # ═══════════════════════════════════════════════════════════════
-_APP_VERSION = "v11"
+_APP_VERSION = "v12"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(_cache_version: str):
-    """Create TableAgent singleton. Cached per-version to force
-    fresh instance after each deployment."""
+    """Create TableAgent singleton. Cached per-version.
+    All heavy imports (sentence-transformers, matplotlib, etc.)
+    happen here — NOT at module level."""
     from table_agent import TableAgent
     return TableAgent()
 
@@ -245,7 +207,6 @@ try:
     with st.sidebar:
         st.title("🧪 DiffAgent")
 
-        # ── API status ──
         if api_key:
             masked = api_key[:4] + "···" + api_key[-4:] if len(api_key) > 8 else "****"
             st.success(f"🔑 {masked}")
@@ -254,7 +215,6 @@ try:
             st.caption("Set `OPENAI_API_KEY` in `.streamlit/secrets.toml`")
         st.divider()
 
-        # ── DATA SOURCE ──
         st.subheader("📂 Data Source")
         data_choice = st.radio(
             "Select data source",
@@ -302,7 +262,6 @@ try:
 
         st.divider()
 
-        # ── STATUS ──
         if st.session_state.data_loaded:
             shape = st.session_state.get("data_shape", "? × ?")
             st.success(f"📊 {st.session_state.data_name}\n*{shape}*")
@@ -311,7 +270,6 @@ try:
 
         st.divider()
 
-        # ── ACTIONS ──
         st.subheader("🧹 Actions")
         col1, col2 = st.columns(2)
         with col1:
@@ -325,14 +283,13 @@ try:
                 get_table_agent.clear()
                 st.rerun()
 except Exception as e:
-    st.error(f"❌ Sidebar rendering failed: {e}")
+    st.error(f"❌ Sidebar failed: {e}")
     st.code(traceback.format_exc())
 
 # ═══════════════════════════════════════════════════════════════
 # MAIN AREA
 # ═══════════════════════════════════════════════════════════════
 try:
-    # ── Data Preview ──
     if st.session_state.data_loaded:
         agent = get_table_agent(_APP_VERSION)
         with st.expander("🔍 Data Preview", expanded=False):
@@ -345,16 +302,13 @@ try:
             except Exception as e:
                 st.caption(f"Preview unavailable: {e}")
 
-    # ── Chat History ──
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("viz"):
                 st.plotly_chart(msg["viz"], use_container_width=True)
 
-    # ── Chat Input ──
     prompt_disabled = not st.session_state.data_loaded
-
     chat_placeholder = (
         "e.g. 'Which zeolite is best for CH4/CO2 separation?' or "
         "'Compare methane and ethane diffusion in ZSM-5'"
@@ -426,10 +380,9 @@ try:
             st.session_state.messages.append(msg)
 
 except Exception as e:
-    st.error(f"❌ Main area rendering failed: {e}")
+    st.error(f"❌ Main area failed: {e}")
     st.code(traceback.format_exc())
 
-# ── Footer ──
 st.divider()
 st.caption(
     "💡 **Examples:** 'Which zeolite is best for CH4/CO2 separation?' | "
