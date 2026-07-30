@@ -157,16 +157,40 @@ Please only return Python code, no explanation.
                 pandas_df = df
             
             # Ensure all numeric columns have correct types
-            for col in pandas_df.columns:
+            # All columns start as object (SimpleDataFrame stores everything as strings).
+            # Two-pass heuristic to decide which ones to convert:
+            #   Pass 1: >50% of ALL rows are numeric → convert (e.g. temperature, diffusion)
+            #   Pass 2: >80% of NON-EMPTY rows are numeric AND ≥50 numeric values
+            #            → convert (e.g. si_al_ratio 35%/90%, pressure_value 28%/98%)
+            for col in list(pandas_df.columns):
                 try:
-                    # Try coerce first: convert numeric strings to float, non-numeric → NaN
                     numeric_col = pd.to_numeric(pandas_df[col], errors='coerce')
-                    # If more than half the values converted successfully, use the numeric version
-                    if numeric_col.notna().sum() > len(numeric_col) * 0.5:
+                    numeric_count = numeric_col.notna().sum()
+                    total_count = len(numeric_col)
+                    if numeric_count == 0:
+                        continue
+                    # Count original rows that are non-empty (not NaN / whitespace / "nan")
+                    stripped = pandas_df[col].astype(str).str.strip()
+                    non_empty_before = (
+                        pandas_df[col].notna() &
+                        (stripped != '') &
+                        (stripped.str.lower() != 'nan')
+                    ).sum()
+                    convert = False
+                    reason = ""
+                    if numeric_count > total_count * 0.5:
+                        convert = True
+                        reason = f">50% of all rows ({numeric_count}/{total_count})"
+                    elif non_empty_before > 0 and numeric_count >= 50 and (numeric_count / non_empty_before) > 0.8:
+                        convert = True
+                        reason = (f">80% of non-empty ({numeric_count}/{non_empty_before}) "
+                                  f"with {numeric_count}≥50 numeric values")
+                    if convert:
                         pandas_df[col] = numeric_col
-                except:
+                        logger.debug(f"Column '{col}' → numeric ({reason})")
+                except Exception:
                     pass
-            
+
             logger.info(f"Data preparation complete, shape: {pandas_df.shape}")
             logger.info(f"Data types:\n{pandas_df.dtypes}")
             
