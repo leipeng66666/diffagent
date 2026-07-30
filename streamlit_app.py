@@ -296,11 +296,20 @@ if prompt := st.chat_input(placeholder=chat_placeholder, disabled=prompt_disable
 
                 msg = {"role": "assistant", "content": answer}
 
-                # Plotly figures
+                # Render visualizations (plotly figures and/or matplotlib base64 images)
+                # Check plural 'visualizations' (list of plotly figs) and singular 'visualization' (base64 PNG)
                 for viz in result.get("visualizations", []):
                     if viz.get("type") == "plotly" and viz.get("figure"):
                         st.plotly_chart(viz["figure"], use_container_width=True)
                         msg["viz"] = viz["figure"]
+
+                viz_single = result.get("visualization")
+                if viz_single and viz_single.get("image"):
+                    st.image(
+                        f"data:image/{viz_single.get('format', 'png')};base64,{viz_single['image']}",
+                        caption=viz_single.get("title", ""),
+                        use_container_width=True,
+                    )
 
             else:
                 err = result.get("message", "Unknown error")
