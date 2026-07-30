@@ -249,28 +249,40 @@ class SimpleDataFrame:
         
         return result
     
+    def _safe_numeric_values(self, col: str) -> list:
+        """Safely extract numeric values from a column, skipping non-numeric strings."""
+        values = []
+        for val in self.data[col]:
+            if val is None or val == '':
+                continue
+            try:
+                values.append(float(val))
+            except (ValueError, TypeError):
+                continue
+        return values
+
     def describe(self):
         """Return descriptive statistics"""
         if not self.columns:
             return {}
-        
+
         # Only calculate statistics for numeric columns
         numeric_cols = []
         for col in self.columns:
             try:
-                # Try to convert first row to numeric
+                # Try to convert first value to numeric
                 float(self.data[col][0])
                 numeric_cols.append(col)
             except (ValueError, TypeError):
                 continue
-        
+
         if not numeric_cols:
             return {}
-        
+
         # Calculate statistics
         stats = {}
         for col in numeric_cols:
-            values = [float(val) for val in self.data[col] if val != '' and val is not None]
+            values = self._safe_numeric_values(col)
             if values:
                 stats[col] = {
                     'count': len(values),
@@ -308,8 +320,8 @@ class SimpleDataFrame:
                     corr_matrix[col1][col2] = 1.0
                 else:
                     # Simplified correlation calculation
-                    values1 = [float(val) for val in self.data[col1] if val != '' and val is not None]
-                    values2 = [float(val) for val in self.data[col2] if val != '' and val is not None]
+                    values1 = self._safe_numeric_values(col1)
+                    values2 = self._safe_numeric_values(col2)
                     
                     if len(values1) == len(values2) and len(values1) > 1:
                         mean1 = sum(values1) / len(values1)
@@ -331,93 +343,65 @@ class SimpleDataFrame:
         """Return sum of each column"""
         if not self.columns:
             return {}
-        
+
         result = {}
         for col in self.columns:
-            try:
-                # Try to convert to numeric and sum
-                values = [float(val) for val in self.data[col] if val != '' and val is not None]
-                if values:
-                    result[col] = sum(values)
-                else:
-                    result[col] = 0
-            except (ValueError, TypeError):
-                result[col] = 0
-        
+            values = self._safe_numeric_values(col)
+            result[col] = sum(values) if values else 0
+
         return result
     
     def mean(self):
         """Return mean of each column"""
         if not self.columns:
             return {}
-        
+
         result = {}
         for col in self.columns:
-            try:
-                values = [float(val) for val in self.data[col] if val != '' and val is not None]
-                if values:
-                    result[col] = sum(values) / len(values)
-                else:
-                    result[col] = 0
-            except (ValueError, TypeError):
-                result[col] = 0
-        
+            values = self._safe_numeric_values(col)
+            result[col] = sum(values) / len(values) if values else 0
+
         return result
     
     def std(self):
         """Return standard deviation of each column"""
         if not self.columns:
             return {}
-        
+
         result = {}
         for col in self.columns:
-            try:
-                values = [float(val) for val in self.data[col] if val != '' and val is not None]
-                if len(values) > 1:
-                    mean_val = sum(values) / len(values)
-                    variance = sum((x - mean_val)**2 for x in values) / len(values)
-                    result[col] = variance**0.5
-                else:
-                    result[col] = 0
-            except (ValueError, TypeError):
+            values = self._safe_numeric_values(col)
+            if len(values) > 1:
+                mean_val = sum(values) / len(values)
+                variance = sum((x - mean_val)**2 for x in values) / len(values)
+                result[col] = variance**0.5
+            else:
                 result[col] = 0
-        
+
         return result
     
     def min(self):
         """Return minimum of each column"""
         if not self.columns:
             return {}
-        
+
         result = {}
         for col in self.columns:
-            try:
-                values = [float(val) for val in self.data[col] if val != '' and val is not None]
-                if values:
-                    result[col] = min(values)
-                else:
-                    result[col] = None
-            except (ValueError, TypeError):
-                result[col] = None
-        
+            values = self._safe_numeric_values(col)
+            result[col] = min(values) if values else None
+
         return result
-    
+
     def max(self):
         """Return maximum of each column"""
         if not self.columns:
             return {}
-        
+
         result = {}
         for col in self.columns:
-            try:
-                values = [float(val) for val in self.data[col] if val != '' and val is not None]
-                if values:
-                    result[col] = max(values)
-                else:
-                    result[col] = None
-            except (ValueError, TypeError):
-                result[col] = None
-        
+            values = self._safe_numeric_values(col)
+            result[col] = max(values) if values else None
+
         return result
     
     def nunique(self):
