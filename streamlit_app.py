@@ -57,7 +57,7 @@ st.markdown("""<style>
 _APP_VERSION = "v20"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
-def get_table_agent(_cache_version: str):
+def get_table_agent(cache_version: str):
     from table_agent import TableAgent
     return TableAgent()
 
