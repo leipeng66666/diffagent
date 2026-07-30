@@ -224,6 +224,7 @@ class SimpleDataFrame:
             self.data[key] = value
             if key not in self.columns:
                 self.columns.append(key)
+            self._invalidate_cache()   # dtypes may have changed
     
     def __str__(self):
         """String representation"""
@@ -270,25 +271,35 @@ class SimpleDataFrame:
     
     @property
     def dtypes(self):
-        """Return data type information"""
+        """Return data type information (cached — invalidated when data changes)."""
+        # Use cached value if available
+        if hasattr(self, '_dtypes_cache') and self._dtypes_cache is not None:
+            return self._dtypes_cache
+
         if not self.columns:
-            return {}
-        
+            self._dtypes_cache = {}
+            return self._dtypes_cache
+
         # Simple data type detection
         dtypes = {}
         for col in self.columns:
             if not self.data[col]:
                 dtypes[col] = 'object'
                 continue
-            
+
             # Check if it's a numeric type
             try:
                 _safe_float(self.data[col][0])
                 dtypes[col] = 'float64'
             except (ValueError, TypeError):
                 dtypes[col] = 'object'
-        
+
+        self._dtypes_cache = dtypes
         return dtypes
+
+    def _invalidate_cache(self):
+        """Invalidate cached dtypes (call after modifying data)."""
+        self._dtypes_cache = None
     
     @property
     def index(self):
@@ -408,15 +419,9 @@ class SimpleDataFrame:
         if not self.columns:
             return {}
 
-        # Only calculate statistics for numeric columns
-        numeric_cols = []
-        for col in self.columns:
-            try:
-                # Try to convert first value to numeric
-                _safe_float(self.data[col][0])
-                numeric_cols.append(col)
-            except (ValueError, TypeError):
-                continue
+        # Only calculate statistics for numeric columns (use cached dtypes)
+        dtypes = self.dtypes
+        numeric_cols = [col for col in self.columns if dtypes.get(col, 'object') == 'float64']
 
         if not numeric_cols:
             return {}
@@ -441,15 +446,10 @@ class SimpleDataFrame:
         if not self.columns:
             return SimpleDataFrame()
         
-        # Only calculate correlation for numeric columns
-        numeric_cols = []
-        for col in self.columns:
-            try:
-                _safe_float(self.data[col][0])
-                numeric_cols.append(col)
-            except (ValueError, TypeError):
-                continue
-        
+        # Only calculate correlation for numeric columns (use cached dtypes)
+        dtypes = self.dtypes
+        numeric_cols = [col for col in self.columns if dtypes.get(col, 'object') == 'float64']
+
         if len(numeric_cols) < 2:
             return SimpleDataFrame()
         
