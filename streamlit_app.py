@@ -91,9 +91,28 @@ settings.OPENAI_MODEL = api_settings["OPENAI_MODEL"]
 # CACHED RESOURCES (one-time heavy init)
 # ═══════════════════════════════════════════════════════════════
 
+# Force-clear stale module cache on app start so imports pick up
+# fresh code after deployment.  Must happen BEFORE any cached-resource
+# function is defined / called.
+_APP_VERSION = "v9"
+_MODULES_TO_REFRESH = [
+    "table_agent",
+    "core",
+    "core.simple_dataframe", "core.data_extractor", "core.code_generator",
+    "core.graphrag_engine", "core.rag_engine", "core.intelligent_filter",
+    "core.intelligent_column_mapper", "core.llm_integration",
+    "core.semantic_parser", "core.unit_recognizer", "core.visualization_engine",
+]
+for _mod in list(sys.modules.keys()):
+    for _prefix in _MODULES_TO_REFRESH:
+        if _mod == _prefix or _mod.startswith(_prefix + "."):
+            del sys.modules[_mod]
+            break
+
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
-def get_table_agent():
-    """Create TableAgent singleton. Cached across all sessions."""
+def get_table_agent(_cache_version: str):
+    """Create TableAgent singleton.  Cached per-version to force
+    fresh instance after each deployment (invalidate via _APP_VERSION)."""
     from table_agent import TableAgent
     return TableAgent()
 
@@ -178,7 +197,7 @@ with st.sidebar:
             st.caption(f"`consolidated_cleand.csv` ({size_mb:.1f} MB)")
             if st.button("⚡ Load Data", use_container_width=True, type="primary"):
                 with st.spinner("Building indexes & knowledge graph…"):
-                    agent = get_table_agent()
+                    agent = get_table_agent(_APP_VERSION)
                     if load_data(agent, BUILTIN_CSV):
                         st.session_state.data_loaded = True
                         st.session_state.data_source_path = BUILTIN_CSV
@@ -197,7 +216,7 @@ with st.sidebar:
             st.caption(f"📎 `{uploaded_file.name}` ({uploaded_file.size / 1024:.0f} KB)")
             if st.button("⚡ Load Uploaded File", use_container_width=True, type="primary"):
                 with st.spinner("Building indexes & knowledge graph…"):
-                    agent = get_table_agent()
+                    agent = get_table_agent(_APP_VERSION)
                     os.makedirs("uploads", exist_ok=True)
                     tmp = f"uploads/{uploaded_file.name}"
                     with open(tmp, "wb") as f:
@@ -243,12 +262,12 @@ st.title("📊 DiffAgent")
 st.caption(
     "Ask natural-language questions about molecular diffusion data. "
     "AI-powered ranking, comparison, and analysis for zeolite separation research. "
-    "— *v8: disable .pyc + data_extractor safety net*"
+    "— *v9: force-clear sys.modules + cache version key*"
 )
 
 # ── Data Preview ──
 if st.session_state.data_loaded:
-    agent = get_table_agent()
+    agent = get_table_agent(_APP_VERSION)
     with st.expander("🔍 Data Preview", expanded=False):
         try:
             preview = agent.get_data_preview(max_rows=20)
@@ -294,7 +313,7 @@ if prompt := st.chat_input(placeholder=chat_placeholder, disabled=prompt_disable
         thinking_placeholder.markdown("🤔 *Analyzing data…*")
 
         try:
-            agent = get_table_agent()
+            agent = get_table_agent(_APP_VERSION)
             ensure_data_loaded(agent)
 
             result = agent.process_query(prompt)
