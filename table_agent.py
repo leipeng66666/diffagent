@@ -189,10 +189,8 @@ class TableAgent:
                 elif mapping.get("specific_zeolite"):
                     anchor_type = "zeolite"
                     anchor_value = mapping.get("specific_zeolite")
-                elif mapping.get("zeolite_column"):
-                    # Try to extract zeolite from the data itself
-                    anchor_type = "zeolite"
-                    anchor_value = mapping.get("specific_zeolite") or "MFI"
+                # No fallback anchor — domain queries (e.g. "natural gas purification")
+                # have no specific entity; QA handles them better
 
                 if anchor_type and anchor_value:
                     logger.info(f"→ GraphRAG route: anchor={anchor_type}:{anchor_value}")
