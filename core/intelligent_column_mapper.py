@@ -234,7 +234,7 @@ Return JSON:
 }}
 
 Field rules:
-- molecules: ALL guest molecules mentioned. CO2→carbon dioxide, CH4→methane, N2→nitrogen, H2O→water, C2H6→ethane, etc. Handle Chinese.
+- molecules: ALL guest molecules mentioned EXPLICITLY or IMPLICITLY. Infer from application context: "natural gas purification" → ["methane","carbon dioxide"], "carbon capture" → ["carbon dioxide"], "dehydration" → ["water"], "air separation" → ["nitrogen","dioxygen"]. CO2→carbon dioxide, CH4→methane, N2→nitrogen, H2O→water, C2H6→ethane, etc. Handle Chinese.
 - query_type:
   "ranking" = asking which zeolite is BEST (e.g. "which zeolite is best for...", "推荐最好的...")
   "comparison" = asking HOW DIFFERENT two entities are (e.g. "how different are X and Y in ZSM-5")
@@ -250,6 +250,7 @@ Examples:
 - "Which zeolite is best for separating CO2 and CH4?" → {{"molecules":["carbon dioxide","methane"],"query_type":"ranking","is_separation":true,"specific_zeolite":null,"needs_prediction":true,"entity_count":2,"route":"qa"}}
 - "How different are ethane and ethene in ZSM-5?" → {{"molecules":["ethane","ethene"],"query_type":"comparison","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":3,"route":"qa"}}
 - "二氧化碳在MFI中的扩散" → {{"molecules":["carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":2,"route":"qa"}}
+- "Which zeolite has the best natural gas purification performance→ {"molecules":["methane","carbon dioxide"],"query_type":"ranking","is_separation":true,"specific_zeolite":null,"needs_prediction":true,"entity_count":2,"route":"qa"}}
 - "Tell me about MFI zeolite diffusion properties" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "CO2 diffusion patterns across different zeolites" → {{"molecules":["carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "Which molecular sieve is most favorable for the selectivity of para-xylene?" → {{"molecules":["1,4-dimethylbenzene"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
