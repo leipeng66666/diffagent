@@ -244,7 +244,7 @@ Field rules:
 - needs_prediction: true ONLY when ALL of: (a) query_type is "ranking", (b) 2+ molecules mentioned, (c) no specific zeolite mentioned
 - entity_count: count of DISTINCT entities mentioned. A specific zeolite = 1 entity. A specific guest molecule = 1 entity. A specific application domain (e.g. "natural gas purification", "dehydration") = 1 entity. Count them all.
   "tell me about MFI" → 1. "CO2 diffusion" → 1. "best zeolite for para-xylene" → 1. "natural gas purification" → 1. "CO2 in MFI" → 2. "CO2 vs CH4" → 2. "best zeolite for CO2/CH4 separation" → 2.
-- route: "graphrag" when entity_count == 1 (single-entity exploration — GraphRAG can show all related zeolites/guests). "qa" for entity_count != 1 (comparisons, multi-entity lookups, generic data queries).
+- route: "graphrag" when entity_count <= 1 (single-entity or single-domain exploration → GraphRAG can show all related zeolites/guests). "qa" for entity_count > 1 (comparisons, multi-entity lookups).
 
 Examples:
 - "Which zeolite is best for separating CO2 and CH4?" → {{"molecules":["carbon dioxide","methane"],"query_type":"ranking","is_separation":true,"specific_zeolite":null,"needs_prediction":true,"entity_count":2,"route":"qa"}}

@@ -87,7 +87,7 @@ st.markdown("""<style>
     footer { visibility: hidden; }
 </style>""", unsafe_allow_html=True)
 
-_APP_VERSION = "v18"
+_APP_VERSION = "v19"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(_cache_version: str):
