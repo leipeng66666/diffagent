@@ -110,11 +110,13 @@ class TableAgent:
             }
             
         except Exception as e:
+            import traceback
             logger.error(f"Failed to load table: {e}")
             return {
                 "success": False,
                 "message": f"Failed to load table: {str(e)}",
-                "error": str(e)
+                "error": str(e),
+                "traceback": traceback.format_exc(),
             }
     
     def process_query(self, query: str) -> Dict[str, Any]:

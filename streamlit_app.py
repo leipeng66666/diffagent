@@ -111,7 +111,11 @@ def load_data(agent, file_path: str) -> bool:
         st.session_state.data_shape = shape
         return True
     err = result.get("error") or result.get("message", "Unknown error")
+    import traceback
+    err_tb = result.get("traceback", "")
     st.error(f"Failed to load: {err}")
+    if err_tb:
+        st.code(err_tb)
     return False
 
 def ensure_data_loaded(agent) -> bool:
