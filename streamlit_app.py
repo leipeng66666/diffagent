@@ -7,14 +7,10 @@ API key protection:
   - Local: create .streamlit/secrets.toml (see secrets.toml.example)
   - Or: set OPENAI_API_KEY environment variable
 """
-import sys
-# Force Python to always recompile from source — prevents stale .pyc cache
-# from causing old code to run after git-push deployments
-sys.dont_write_bytecode = True
-
 import streamlit as st
 import pandas as pd
 import os
+import sys
 import io
 
 # ═══════════════════════════════════════════════════════════════
@@ -91,28 +87,13 @@ settings.OPENAI_MODEL = api_settings["OPENAI_MODEL"]
 # CACHED RESOURCES (one-time heavy init)
 # ═══════════════════════════════════════════════════════════════
 
-# Force-clear stale module cache on app start so imports pick up
-# fresh code after deployment.  Must happen BEFORE any cached-resource
-# function is defined / called.
-_APP_VERSION = "v9"
-_MODULES_TO_REFRESH = [
-    "table_agent",
-    "core",
-    "core.simple_dataframe", "core.data_extractor", "core.code_generator",
-    "core.graphrag_engine", "core.rag_engine", "core.intelligent_filter",
-    "core.intelligent_column_mapper", "core.llm_integration",
-    "core.semantic_parser", "core.unit_recognizer", "core.visualization_engine",
-]
-for _mod in list(sys.modules.keys()):
-    for _prefix in _MODULES_TO_REFRESH:
-        if _mod == _prefix or _mod.startswith(_prefix + "."):
-            del sys.modules[_mod]
-            break
+# Bump this on every deploy to force fresh TableAgent (defeats st.cache_resource staleness)
+_APP_VERSION = "v10"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(_cache_version: str):
-    """Create TableAgent singleton.  Cached per-version to force
-    fresh instance after each deployment (invalidate via _APP_VERSION)."""
+    """Create TableAgent singleton. Cached per-version to force
+    fresh instance after each deployment."""
     from table_agent import TableAgent
     return TableAgent()
 
@@ -262,7 +243,7 @@ st.title("📊 DiffAgent")
 st.caption(
     "Ask natural-language questions about molecular diffusion data. "
     "AI-powered ranking, comparison, and analysis for zeolite separation research. "
-    "— *v9: force-clear sys.modules + cache version key*"
+    "— *v10: simplified — no sys.modules hacking*"
 )
 
 # ── Data Preview ──
