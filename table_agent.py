@@ -189,8 +189,8 @@ class TableAgent:
                 elif mapping.get("specific_zeolite"):
                     anchor_type = "zeolite"
                     anchor_value = mapping.get("specific_zeolite")
-                # No fallback anchor — domain queries (e.g. "natural gas purification")
-                # have no specific entity; QA handles them better
+                # Domain queries (e.g. "natural gas purification") now route here too —
+                # inferred molecules (methane, CO2) provide the anchor for GraphRAG exploration
 
                 if anchor_type and anchor_value:
                     logger.info(f"→ GraphRAG route: anchor={anchor_type}:{anchor_value}")

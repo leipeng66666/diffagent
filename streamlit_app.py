@@ -54,7 +54,7 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 # ── Cached TableAgent ──
-_APP_VERSION = "v20"
+_APP_VERSION = "v21"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(cache_version: str):
