@@ -14,6 +14,131 @@ def _safe_float(s: str) -> float:
     return float(str(s).replace('∞', 'inf'))
 
 
+class SimpleSeries:
+    """Minimal Series-like wrapper for a single column, so that code written
+    for pandas (e.g. df[col].dropna()) works with SimpleDataFrame too."""
+
+    def __init__(self, values: list, name: str = ""):
+        self._values = list(values)
+        self.name = name
+
+    @property
+    def dtype(self):
+        """Heuristic dtype based on first non-null value."""
+        for v in self._values:
+            if v is not None and str(v).strip() != '' and str(v).lower() != 'nan':
+                try:
+                    _safe_float(v)
+                    return 'float64'
+                except (ValueError, TypeError):
+                    return 'object'
+        return 'object'
+
+    def dropna(self) -> 'SimpleSeries':
+        """Return a new SimpleSeries with None/NaN/empty values removed."""
+        return SimpleSeries([
+            v for v in self._values
+            if v is not None and str(v).strip() != '' and str(v).lower() != 'nan'
+        ], name=self.name)
+
+    def unique(self) -> list:
+        """Return unique non-null values."""
+        seen = set()
+        result = []
+        for v in self._values:
+            s = str(v) if v is not None else ''
+            if s and s.lower() != 'nan' and s not in seen:
+                seen.add(s)
+                result.append(str(v))
+        return result
+
+    def nunique(self) -> int:
+        return len(self.unique())
+
+    def head(self, n: int = 5) -> 'SimpleSeries':
+        return SimpleSeries(self._values[:n], name=self.name)
+
+    def quantile(self, q: float):
+        """Compute quantile for numeric data."""
+        nums = []
+        for v in self._values:
+            if v is None or str(v).strip() == '' or str(v).lower() == 'nan':
+                continue
+            try:
+                nums.append(_safe_float(v))
+            except (ValueError, TypeError):
+                continue
+        if not nums:
+            return None
+        nums.sort()
+        idx = q * (len(nums) - 1)
+        lo, hi = int(idx), min(int(idx) + 1, len(nums) - 1)
+        frac = idx - lo
+        return nums[lo] + frac * (nums[hi] - nums[lo])
+
+    def astype(self, _dtype):
+        # no-op — everything is string in SimpleDataFrame
+        return self
+
+    def tolist(self) -> list:
+        return list(self._values)
+
+    @property
+    def values(self):
+        return list(self._values)
+
+    def __getitem__(self, idx):
+        return self._values[idx]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    # ── Comparison & boolean operators (pandas-like) ──
+
+    def _compare(self, other, op):
+        result = []
+        for v in self._values:
+            try:
+                n = _safe_float(v)
+                result.append(op(n, other))
+            except (ValueError, TypeError):
+                result.append(False)
+        return SimpleSeries(result, name=self.name)
+
+    def __lt__(self, other):  return self._compare(other, lambda a, b: a < b)
+    def __le__(self, other):  return self._compare(other, lambda a, b: a <= b)
+    def __gt__(self, other):  return self._compare(other, lambda a, b: a > b)
+    def __ge__(self, other):  return self._compare(other, lambda a, b: a >= b)
+    def __eq__(self, other):  return self._compare(other, lambda a, b: a == b)
+    def __ne__(self, other):  return self._compare(other, lambda a, b: a != b)
+
+    def __or__(self, other):
+        """Element-wise logical OR for boolean series."""
+        a = [bool(v) for v in self._values]
+        b = [bool(v) for v in (other._values if isinstance(other, SimpleSeries) else other)]
+        n = max(len(a), len(b))
+        a += [False] * (n - len(a))
+        b += [False] * (n - len(b))
+        return SimpleSeries([a[i] or b[i] for i in range(n)])
+
+    def __and__(self, other):
+        """Element-wise logical AND for boolean series."""
+        a = [bool(v) for v in self._values]
+        b = [bool(v) for v in (other._values if isinstance(other, SimpleSeries) else other)]
+        n = max(len(a), len(b))
+        a += [False] * (n - len(a))
+        b += [False] * (n - len(b))
+        return SimpleSeries([a[i] and b[i] for i in range(n)])
+
+    def __repr__(self):
+        preview = ', '.join(str(v) for v in self._values[:5])
+        more = '...' if len(self._values) > 5 else ''
+        return f"SimpleSeries({preview}{more}, dtype={self.dtype})"
+
+
 class SimpleDataFrame:
     """Simple DataFrame alternative implementation"""
     
@@ -78,9 +203,19 @@ class SimpleDataFrame:
             yield i, SimpleRow(row_data)
     
     def __getitem__(self, key):
-        """Get column data"""
+        """Get column data — returns SimpleSeries for column access
+        so that pandas-idiom code (e.g. df[col].dropna()) works.
+        Also supports boolean-array indexing: df[boolean_list]."""
         if isinstance(key, str):
-            return self.data[key]
+            return SimpleSeries(self.data[key], name=key)
+        # Boolean-array row filtering
+        if isinstance(key, (list, SimpleSeries)):
+            mask = list(key) if isinstance(key, SimpleSeries) else key
+            if mask and isinstance(mask[0], bool):
+                new_data = {}
+                for col in self.columns:
+                    new_data[col] = [self.data[col][i] for i, keep in enumerate(mask) if i < len(self.data[col]) and keep]
+                return SimpleDataFrame(new_data)
         return self
     
     def __setitem__(self, key, value):
