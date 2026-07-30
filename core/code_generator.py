@@ -159,8 +159,11 @@ Please only return Python code, no explanation.
             # Ensure all numeric columns have correct types
             for col in pandas_df.columns:
                 try:
-                    # Try to convert to numeric type (if possible)
-                    pandas_df[col] = pd.to_numeric(pandas_df[col], errors='ignore')
+                    # Try coerce first: convert numeric strings to float, non-numeric → NaN
+                    numeric_col = pd.to_numeric(pandas_df[col], errors='coerce')
+                    # If more than half the values converted successfully, use the numeric version
+                    if numeric_col.notna().sum() > len(numeric_col) * 0.5:
+                        pandas_df[col] = numeric_col
                 except:
                     pass
             
