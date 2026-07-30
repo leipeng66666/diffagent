@@ -99,11 +99,19 @@ def get_table_agent():
 
 def load_data(agent, file_path: str) -> bool:
     """Load CSV into agent. Returns True on success."""
-    result = agent.load_table(file_path)
+    try:
+        result = agent.load_table(file_path)
+    except Exception as e:
+        import traceback
+        st.error(f"Loading crashed: {e}")
+        st.code(traceback.format_exc())
+        return False
     if result.get("success"):
         shape = f"{result.get('shape', ['?', '?'])[0]} rows × {result.get('shape', ['?', '?'])[1]} cols"
         st.session_state.data_shape = shape
         return True
+    err = result.get("error") or result.get("message", "Unknown error")
+    st.error(f"Failed to load: {err}")
     return False
 
 def ensure_data_loaded(agent) -> bool:
