@@ -361,9 +361,9 @@ You MUST:
             # )
             visualizations = []
             
-            # 9. Generate insights
-            insights = self.rag_engine.generate_insights(filtered_data, query)
-            
+            # 9. Generate insights (SKIPPED — not compatible with SimpleDataFrame)
+            insights = {}
+
             # Convert objects in parsed_query to dictionaries
             serializable_parsed_query = {
                 "query": parsed_query.get("query", ""),

@@ -13,8 +13,8 @@ import traceback
 
 st.set_page_config(page_title="DiffAgent", page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
 
-st.title("🧪 DiffAgent v16")
-st.success("✅ v15 baseline works. v16 adds: config, pandas, API settings.")
+st.title("🧪 DiffAgent v17")
+st.success("✅ v17: reverted to v9 core — removed SimpleSeries, fixed 20min hang")
 
 # Lightweight checks
 _status = []
@@ -75,7 +75,7 @@ if fails > 0:
     st.stop()
 
 st.divider()
-st.caption("— v16: config + pandas OK, ready for full UI")
+st.caption("— v17: v9 core restored, no SimpleSeries")
 
 # ═══════════════════════════════════════════════════════════════
 # FULL APP BELOW
@@ -87,7 +87,7 @@ st.markdown("""<style>
     footer { visibility: hidden; }
 </style>""", unsafe_allow_html=True)
 
-_APP_VERSION = "v16"
+_APP_VERSION = "v17"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(_cache_version: str):
@@ -226,4 +226,4 @@ if prompt := st.chat_input(placeholder="Ask about the data…", disabled=prompt_
         st.session_state.messages.append(msg)
 
 st.divider()
-st.caption("💡 v16 — 'Which zeolite is best for CH4/CO2 separation?'")
+st.caption("💡 v17 — 'Which zeolite is best for CH4/CO2 separation?'")
