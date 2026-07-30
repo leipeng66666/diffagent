@@ -1,10 +1,22 @@
 """
 DiffAgent v13 — Minimal bootstrap to verify Streamlit rendering
 """
-import streamlit as st
-import traceback
 import sys
 import os
+
+# ═══════════════════════════════════════════════════════════════
+# CRITICAL: Ensure local packages take precedence over site-packages.
+# On Streamlit Cloud, pip may install a conflicting "core" package,
+# causing "from core.simple_dataframe import ..." to find the wrong one.
+# This MUST run before any other local import.
+# ═══════════════════════════════════════════════════════════════
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Remove and re-insert to ensure local dir is FIRST
+sys.path = [p for p in sys.path if p != _APP_DIR]
+sys.path.insert(0, _APP_DIR)
+
+import streamlit as st
+import traceback
 
 # ── Page config ──
 try:
@@ -13,7 +25,7 @@ except Exception:
     pass
 
 # ── Render test ──
-st.title("🧪 DiffAgent v13 — Minimal Boot")
+st.title("🧪 DiffAgent v14 — sys.path fix")
 st.success("✅ Streamlit is rendering. Python: " + sys.version.split()[0])
 
 # ── Step-by-step imports ──
@@ -68,11 +80,11 @@ if fails > 0:
 
 # ── Full app (simplified) ──
 st.divider()
-st.caption("— v13: minimal bootstrap confirmed, loading full UI…")
+st.caption("— v14: sys.path fix for core package conflict")
 
 import pandas as pd
 
-_APP_VERSION = "v13"
+_APP_VERSION = "v14"
 
 @st.cache_resource(show_spinner="Loading…")
 def get_table_agent(_v: str):
@@ -186,4 +198,4 @@ if prompt := st.chat_input(placeholder="Ask a question about the data…", disab
         st.session_state.messages.append(msg)
 
 st.divider()
-st.caption("💡 v13 minimal — 'Which zeolite is best for CH4/CO2 separation?'")
+st.caption("💡 v14 — 'Which zeolite is best for CH4/CO2 separation?'")
