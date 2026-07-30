@@ -18,11 +18,22 @@ class DataExtractor:
     def load_table(self, file_path: str) -> SimpleDataFrame:
         """Load table data"""
         logger.info(f"Loading table file: {file_path}")
-        
+
         try:
             # Use SimpleDataFrame to avoid pandas compatibility issues
             loader = SimpleDataLoader()
-            return loader.load_table(file_path)
+            df = loader.load_table(file_path)
+
+            # SAFETY NET: Normalize any remaining Unicode-∞ to 'inf'
+            # (belt-and-suspenders — SimpleDataLoader._load_csv already does this,
+            # but stale .pyc cache on Cloud can bypass it)
+            for col in df.columns:
+                df.data[col] = [
+                    str(val).replace('∞', 'inf') if val is not None else ''
+                    for val in df.data[col]
+                ]
+
+            return df
         except Exception as e:
             logger.error(f"Failed to load table: {e}")
             raise

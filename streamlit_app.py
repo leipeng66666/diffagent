@@ -7,10 +7,14 @@ API key protection:
   - Local: create .streamlit/secrets.toml (see secrets.toml.example)
   - Or: set OPENAI_API_KEY environment variable
 """
+import sys
+# Force Python to always recompile from source — prevents stale .pyc cache
+# from causing old code to run after git-push deployments
+sys.dont_write_bytecode = True
+
 import streamlit as st
 import pandas as pd
 import os
-import sys
 import io
 
 # ═══════════════════════════════════════════════════════════════
@@ -239,7 +243,7 @@ st.title("📊 DiffAgent")
 st.caption(
     "Ask natural-language questions about molecular diffusion data. "
     "AI-powered ranking, comparison, and analysis for zeolite separation research. "
-    "— *v7: ∞ → inf fix*"
+    "— *v8: disable .pyc + data_extractor safety net*"
 )
 
 # ── Data Preview ──

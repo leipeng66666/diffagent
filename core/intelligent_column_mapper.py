@@ -64,7 +64,7 @@ class IntelligentColumnMapper:
             if s is None:
                 continue
             try:
-                float(str(s))
+                float(str(s).replace('∞', 'inf'))
                 numeric_count += 1
                 valid_samples.append(s)
             except (ValueError, TypeError):
