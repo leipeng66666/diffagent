@@ -242,8 +242,13 @@ Field rules:
 - is_separation: true ONLY if about separating/distinguishing TWO OR MORE specific molecules from each other. If only ONE molecule is mentioned, is_separation MUST be false even if the word "selectivity" or "separation" appears.
 - specific_zeolite: zeolite code if asking about a SPECIFIC zeolite, else null
 - needs_prediction: true ONLY when ALL of: (a) query_type is "ranking", (b) 2+ molecules mentioned, (c) no specific zeolite mentioned
-- entity_count: count ONLY entities EXPLICITLY mentioned by NAME. A specific zeolite code = 1. A specific guest molecule name = 1. A DOMAIN description without naming any entity (e.g. "natural gas purification", "天然气净化") = 0 — the user described a COMPARISON CONTEXT but didn't say what to compare against, so GraphRAG explores the full domain with ALL inferred molecules.
-  "tell me about MFI" → 1 (zeolite named). "CO2 diffusion" → 1 (molecule named). "best zeolite for para-xylene" → 1 (molecule named). "natural gas purification" → 0 (domain, no entity named). "天然气净化" → 0 (domain). "CO2 in MFI" → 2 (both named). "CO2 vs CH4" → 2 (two named). "best zeolite for CO2/CH4 separation" → 2 (two named).
+- entity_count: CRITICAL RULE — count named entities, BUT when only 1 entity is named AND the query implies COMPARISON (keywords: selectivity, separation, purification, removal, "best for", "most favorable"), set entity_count=0. This triggers domain-level GraphRAG that explores ALL related guests, not just the one named.
+  Rule: count named entities. If count==1 and query has comparison context → set to 0. If count==0 (pure domain) → 0.
+  "tell me about MFI" → 1 (1 named, no comparison). "CO2 diffusion" → 1 (1 named, no comparison).
+  "best zeolite for para-xylene selectivity" → 0 (1 named BUT "selectivity"=comparison with other isomers).
+  "remove lead ions from wastewater" → 0 (1 named BUT "removal"=comparison with other ions).
+  "natural gas purification" → 0 (domain, no named entity, implied comparison).
+  "CO2 in MFI" → 2 (two named). "CO2 vs CH4" → 2 (two named).
 - route: "graphrag" when entity_count <= 1 — INCLUDES entity_count=0 (no named entity but query is about zeolites/diffusion → GraphRAG gives a general overview of the dataset anchored on query context). "qa" ONLY for entity_count > 1 (multi-entity comparisons needing direct data comparison).
 
 Examples:
@@ -254,7 +259,8 @@ Examples:
 - "天然气净化的最佳分子筛" → {{"molecules":["methane","carbon dioxide"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"graphrag"}}
 - "Tell me about MFI zeolite diffusion properties" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "CO2 diffusion patterns across different zeolites" → {{"molecules":["carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
-- "Which molecular sieve is most favorable for the selectivity of para-xylene?" → {{"molecules":["1,4-dimethylbenzene"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
+- "Which molecular sieve is most favorable for the selectivity of para-xylene?" → {{"molecules":["1,4-dimethylbenzene"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"graphrag"}}
+- "Which molecular sieve is most likely to remove the lead ions from the wastewater?" → {{"molecules":["lead"],"query_type":"ranking","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"graphrag"}}
 - "分析MFI分子筛中扩散的规律" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":"MFI","needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "分析二氧化碳在不同分子筛中的扩散规律" → {{"molecules":["carbon dioxide"],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":1,"route":"graphrag"}}
 - "show all data above 300K" → {{"molecules":[],"query_type":"general","is_separation":false,"specific_zeolite":null,"needs_prediction":false,"entity_count":0,"route":"graphrag"}}
