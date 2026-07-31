@@ -447,6 +447,7 @@ Please return the entity list in JSON format:
     def analyze_with_project_graph(self, query: str, anchor_type: str,
                                    anchor_value: str) -> Dict[str, Any]:
         """Use pre-built project1/project2 graph for exploratory analysis.
+        Falls back to knowledge_graph (CSV-built) when project graph is empty.
 
         Args:
             query: Original user query
@@ -472,6 +473,12 @@ Please return the entity list in JSON format:
         subgraph = self.project_graph_builder.get_subgraph(
             anchor_type, anchor_value, max_depth=2
         )
+
+        # Fallback: if project graph is empty (no project1/project2 data dirs),
+        # use the CSV-built knowledge_graph instead
+        if subgraph.get("error") or not subgraph.get("nodes"):
+            logger.info(f"Project graph empty for '{anchor_value}', falling back to knowledge_graph")
+            return self._analyze_with_knowledge_graph(query, anchor_type, anchor_value)
 
         if subgraph.get("error"):
             return {"error": subgraph["error"]}
@@ -549,18 +556,215 @@ Rules:
             logger.error(f"Project graph analysis failed: {e}")
             return {"error": str(e)}
 
+    def _analyze_with_knowledge_graph(self, query: str, anchor_type: str,
+                                       anchor_value: str) -> Dict[str, Any]:
+        """Fallback: analyze using the CSV-built knowledge_graph when project graph is empty.
+
+        Finds nodes matching the anchor in self.knowledge_graph, extracts their data,
+        and builds context for LLM analysis.
+        """
+        if len(self.knowledge_graph.nodes()) == 0:
+            return {"error": "Knowledge graph is empty — load data first"}
+
+        # Find anchor nodes in the knowledge graph
+        anchor_lower = anchor_value.lower()
+        matched_nodes = []
+        for node_id in self.knowledge_graph.nodes():
+            node_data = self.knowledge_graph.nodes[node_id]
+            node_value = str(node_data.get('value', node_id)).lower()
+            if anchor_lower in node_value or node_value in anchor_lower:
+                matched_nodes.append(node_id)
+
+        if not matched_nodes:
+            return {"error": f"No {anchor_type} matching '{anchor_value}' found in knowledge graph"}
+
+        logger.info(f"Knowledge graph: found {len(matched_nodes)} nodes matching '{anchor_value}'")
+
+        # Collect data from matched nodes and their neighbors
+        seen_rows = set()
+        data_rows = []
+        for node_id in matched_nodes[:20]:
+            node_data = self.knowledge_graph.nodes[node_id]
+            if 'row_index' in node_data:
+                ridx = node_data['row_index']
+                if ridx not in seen_rows:
+                    seen_rows.add(ridx)
+                    data_rows.append(node_data)
+            # Also include 1-hop neighbors
+            for neighbor in list(self.knowledge_graph.neighbors(node_id))[:5]:
+                nd = self.knowledge_graph.nodes[neighbor]
+                if 'row_index' in nd:
+                    ridx = nd['row_index']
+                    if ridx not in seen_rows:
+                        seen_rows.add(ridx)
+                        data_rows.append(nd)
+
+        if not data_rows:
+            return {"error": f"Found matching nodes but no row data for '{anchor_value}'"}
+
+        # Build CSV-style context from entity attributes
+        # Collect all unique attribute keys
+        all_keys = set()
+        for row in data_rows:
+            all_keys.update(k for k in row.keys() if not k.startswith('_'))
+
+        lines = [",".join(sorted(all_keys))]
+        for row in data_rows[:200]:  # Cap rows
+            vals = [str(row.get(k, '')) for k in sorted(all_keys)]
+            lines.append(",".join(vals))
+
+        context = f"""Knowledge graph exploration for {anchor_type}: '{anchor_value}'
+Found {len(data_rows)} data rows across {len(matched_nodes)} graph nodes.
+
+Data (CSV):
+{chr(10).join(lines[:201])}
+"""
+
+        anchor_label = "guest molecule" if anchor_type == "guest" else "zeolite"
+        system_prompt = f"""You are a materials science expert analyzing zeolite diffusion data from a knowledge graph.
+
+The data below shows data extracted from the knowledge graph anchored on {anchor_label} '{anchor_value}'.
+
+Output format:
+1. Overview: Summarize the key diffusion characteristics of this {anchor_label}.
+2. Ranking: Rank the top zeolites/guests by diffusion performance. Explain WHY.
+3. Patterns: What patterns do you observe? (pore size effects, temperature sensitivity, ion exchange, etc.)
+4. Notable findings: Any outliers or surprising results. Mention data gaps.
+
+Rules:
+- Cite specific diffusion coefficient values and DOIs from the data
+- Note whether data comes from computational (MD) or experimental methods
+- Do not invent data not present in the provided context"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{context}\n\nQuestion: {query}"}
+        ]
+
+        try:
+            response = self.llm_integration._call_llm(messages, "analysis")
+            answer = response["content"]
+
+            return {
+                "response": {
+                    "answer": answer,
+                    "model": self.llm_integration.model,
+                    "tokens_used": response["total_tokens"],
+                    "response_type": "analysis"
+                },
+                "visualizations": [],
+                "graph_info": {
+                    "anchor": f"{anchor_type}:{anchor_value}",
+                    "node_count": len(matched_nodes),
+                    "row_count": len(data_rows),
+                    "source": "knowledge_graph_fallback",
+                }
+            }
+        except Exception as e:
+            logger.error(f"Knowledge graph analysis failed: {e}")
+            return {"error": str(e)}
+
+    def _analyze_with_knowledge_graph_domain(self, query: str,
+                                              guest_list: List[str]) -> Dict[str, Any]:
+        """Fallback domain analysis using the CSV-built knowledge_graph.
+
+        Searches for ALL guests in the domain and merges their data for a complete picture.
+        """
+        if len(self.knowledge_graph.nodes()) == 0:
+            return {"error": "Knowledge graph is empty — load data first"}
+
+        all_data_rows = []
+        all_matched = 0
+        found_guests = []
+
+        for anchor_value in guest_list[:5]:
+            anchor_lower = anchor_value.lower()
+            seen_rows = set()
+            for node_id in self.knowledge_graph.nodes():
+                node_data = self.knowledge_graph.nodes[node_id]
+                node_value = str(node_data.get('value', node_id)).lower()
+                if anchor_lower in node_value:
+                    if node_id not in seen_rows:
+                        seen_rows.add(node_id)
+                        all_matched += 1
+                        if 'row_index' in node_data:
+                            all_data_rows.append(node_data)
+            if seen_rows:
+                found_guests.append(anchor_value)
+
+        if not all_data_rows:
+            return {"error": f"No matching data found in knowledge graph for: {guest_list}"}
+
+        logger.info(f"Domain fallback: {len(all_data_rows)} rows across {all_matched} nodes "
+                    f"for guests: {found_guests}")
+
+        # Build CSV context
+        all_keys = set()
+        for row in all_data_rows:
+            all_keys.update(k for k in row.keys() if not k.startswith('_'))
+
+        lines = [",".join(sorted(all_keys))]
+        for row in all_data_rows[:300]:
+            vals = [str(row.get(k, '')) for k in sorted(all_keys)]
+            lines.append(",".join(vals))
+
+        context = f"""Domain exploration for: {', '.join(guest_list[:5])}
+Guests found in data: {', '.join(found_guests)}
+Total matching rows: {len(all_data_rows)}
+
+Data (CSV):
+{chr(10).join(lines[:301])}
+"""
+
+        system_prompt = f"""You are a materials science expert analyzing zeolite diffusion data across a domain.
+
+The user asked about a DOMAIN (not a single molecule). The data below spans these related guest molecules: {', '.join(found_guests)}.
+
+Output format:
+1. Domain overview: What guest molecules and zeolites are involved? What does the data cover?
+2. Cross-guest comparison: How do diffusion characteristics differ between the guests? Which guest/zeolite combinations stand out?
+3. Best candidates: For the user's goal (purification/separation/removal), which zeolites perform best? Consider ALL guests together.
+4. Patterns: Pore size effects, temperature sensitivity, guest size correlations across the domain.
+5. Data gaps: What key guests or zeolite types are MISSING?
+
+Rules:
+- Synthesize across ALL guests — do NOT focus on just one
+- Cite specific diffusion coefficients, temperatures, and DOIs
+- Note which data is experimental vs computational (MD)
+- Do not invent data not present in the provided context"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{context}\n\nQuestion: {query}"}
+        ]
+
+        try:
+            response = self.llm_integration._call_llm(messages, "analysis")
+            answer = response["content"]
+
+            return {
+                "response": {
+                    "answer": answer,
+                    "model": self.llm_integration.model,
+                    "tokens_used": response["total_tokens"],
+                    "response_type": "domain_analysis"
+                },
+                "visualizations": [],
+                "graph_info": {
+                    "anchor": f"domain:{','.join(found_guests)}",
+                    "node_count": all_matched,
+                    "row_count": len(all_data_rows),
+                    "source": "knowledge_graph_domain_fallback",
+                }
+            }
+        except Exception as e:
+            logger.error(f"Domain knowledge graph analysis failed: {e}")
+            return {"error": str(e)}
+
     def analyze_domain(self, query: str, guest_list: List[str]) -> Dict[str, Any]:
         """Entity-count=0 domain exploration: merge subgraphs from ALL inferred guests.
 
-        Unlike analyze_with_project_graph which anchors on a single entity for focused
-        exploration, this method explores the UNION of multiple inferred guests to give
-        a complete picture of the domain (e.g. "natural gas purification" includes CH4,
-        CO2, H2O data together, without locking onto just one molecule).
-
-        Args:
-            query: Original user query
-            guest_list: All inferred guest molecules from the domain (e.g. ["methane",
-                        "carbon dioxide"] for "natural gas")
+        Falls back to knowledge_graph when project graph is empty.
         """
         if not self.project_graph_builder:
             return {"error": "Project graph builder not available"}
@@ -574,6 +778,13 @@ Rules:
 
         if not guest_list:
             return {"error": "No inferred guests for domain analysis"}
+
+        # Check if project graph has any data — if not, fall back to knowledge_graph
+        entities = self.project_graph_builder.get_available_entities()
+        if entities.get("guest_count", 0) == 0:
+            logger.info("Project graph empty, falling back to knowledge_graph for domain analysis")
+            # Use the first guest as anchor for focused fallback, but with domain prompt
+            return self._analyze_with_knowledge_graph_domain(query, guest_list)
 
         # Merge subgraphs from ALL inferred guests
         all_nodes = set()
