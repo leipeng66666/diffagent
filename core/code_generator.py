@@ -58,15 +58,22 @@ COLUMN SEMANTICS (very important - use the correct column for filtering):
 {column_hints}
 
 Important understanding:
-1. To filter by ZEOLITE TYPE (e.g. MFI, FAU, LTA), use the 'std_zeolite_name' column
-   - Example: df[df['std_zeolite_name'].str.contains('MFI', case=False, na=False)]
-2. To filter by GAS/MATERIAL (e.g. methane, CO2), use the 'guest_molecule' column
-   - Example: df[df['guest_molecule'].str.contains('methane', case=False, na=False)]
+1. To filter by ZEOLITE TYPE, use EXACT MATCH on 'std_zeolite_name' column:
+   - For a SPECIFIC zeolite like "FAU-LiX": df[df['std_zeolite_name'] == 'FAU-LiX']
+   - For a broader zeolite family, use == with known exact values, NEVER str.contains()
+   - WRONG: df[df['std_zeolite_name'].str.contains('FAU-Li', ...)] — catches FAU-Li,REX too!
+   - WRONG: df[df['std_zeolite_name'].str.contains('FAU', ...)] — catches FAU-CuY, FAU-Sr-Cu-Y, etc.
+   - CORRECT: df[df['std_zeolite_name'].isin(['FAU-LiX'])] for exact match
+   - Check the COLUMN SEMANTICS hints below for the actual 'std_zeolite_name' values
+2. To filter by GAS/MATERIAL, use EXACT MATCH on 'guest_molecule' column:
+   - Example: df[df['guest_molecule'] == 'dioxygen']
+   - Example for multiple: df[df['guest_molecule'].isin(['dioxygen', 'nitrogen'])]
 3. Numeric columns (temperature_value, diffusion_coefficient_value, KD_A, PLD_A, etc.)
    are already pre-converted to float64. Use them directly — no str.extract needed.
    Drop NaN rows before plotting: df = df.dropna(subset=['temperature_value', ...])
-4. Histogram MUST use ax.hist() or sns.histplot(), do NOT use line chart or bar chart
-5. Always check if filtered data is empty before plotting, and print a warning if so
+4. For Arrhenius plots: use 1000/temperature_value as X, log10(diffusion_coefficient_value) as Y
+5. Histogram MUST use ax.hist() or sns.histplot(), do NOT use line chart or bar chart
+6. Always check if filtered data is empty before plotting, and print a warning if so
 
 Requirements:
 1. Generate complete, executable Python code
