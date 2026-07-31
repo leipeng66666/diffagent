@@ -72,6 +72,7 @@ class GraphRAGEngine:
                 'weight': weight
             })
         
+        self._df = df  # Save reference for knowledge_graph fallback lookups
         logger.info(f"Knowledge graph build complete: {len(self.knowledge_graph.nodes)} nodes, "
                    f"{len(self.knowledge_graph.edges)} edges")
     
@@ -560,8 +561,8 @@ Rules:
                                        anchor_value: str) -> Dict[str, Any]:
         """Fallback: analyze using the CSV-built knowledge_graph when project graph is empty.
 
-        Finds nodes matching the anchor in self.knowledge_graph, extracts their data,
-        and builds context for LLM analysis.
+        Row data is retrieved via edge attributes (edges store row_index from
+        _extract_relations), not node attributes.
         """
         if len(self.knowledge_graph.nodes()) == 0:
             return {"error": "Knowledge graph is empty — load data first"}
@@ -572,7 +573,7 @@ Rules:
         for node_id in self.knowledge_graph.nodes():
             node_data = self.knowledge_graph.nodes[node_id]
             node_value = str(node_data.get('value', node_id)).lower()
-            if anchor_lower in node_value or node_value in anchor_lower:
+            if anchor_lower in node_value:
                 matched_nodes.append(node_id)
 
         if not matched_nodes:
@@ -580,60 +581,58 @@ Rules:
 
         logger.info(f"Knowledge graph: found {len(matched_nodes)} nodes matching '{anchor_value}'")
 
-        # Collect data from matched nodes and their neighbors
+        # Collect row indices from EDGES adjacent to matched nodes
         seen_rows = set()
-        data_rows = []
-        for node_id in matched_nodes[:20]:
-            node_data = self.knowledge_graph.nodes[node_id]
-            if 'row_index' in node_data:
-                ridx = node_data['row_index']
-                if ridx not in seen_rows:
-                    seen_rows.add(ridx)
-                    data_rows.append(node_data)
-            # Also include 1-hop neighbors
-            for neighbor in list(self.knowledge_graph.neighbors(node_id))[:5]:
-                nd = self.knowledge_graph.nodes[neighbor]
-                if 'row_index' in nd:
-                    ridx = nd['row_index']
-                    if ridx not in seen_rows:
-                        seen_rows.add(ridx)
-                        data_rows.append(nd)
+        for node_id in matched_nodes[:30]:
+            for _, neighbor, edge_data in self.knowledge_graph.edges(node_id, data=True):
+                attrs = edge_data.get('attributes', edge_data)
+                if isinstance(attrs, dict) and 'row_index' in attrs:
+                    seen_rows.add(attrs['row_index'])
+            # Also check incoming edges
+            for pred, _, edge_data in self.knowledge_graph.in_edges(node_id, data=True):
+                attrs = edge_data.get('attributes', edge_data)
+                if isinstance(attrs, dict) and 'row_index' in attrs:
+                    seen_rows.add(attrs['row_index'])
 
-        if not data_rows:
-            return {"error": f"Found matching nodes but no row data for '{anchor_value}'"}
+        if not seen_rows:
+            return {"error": f"Found {len(matched_nodes)} matching nodes but no row data for '{anchor_value}'"}
 
-        # Build CSV-style context from entity attributes
-        # Collect all unique attribute keys
-        all_keys = set()
-        for row in data_rows:
-            all_keys.update(k for k in row.keys() if not k.startswith('_'))
+        logger.info(f"Collected {len(seen_rows)} unique row indices from edges")
 
-        lines = [",".join(sorted(all_keys))]
-        for row in data_rows[:200]:  # Cap rows
-            vals = [str(row.get(k, '')) for k in sorted(all_keys)]
-            lines.append(",".join(vals))
+        # Fetch actual data from the saved DataFrame
+        df = getattr(self, '_df', None)
+        if df is None:
+            return {"error": "DataFrame reference not available"}
+
+        row_indices = sorted(seen_rows)[:300]
+        columns = list(df.columns)
+        lines = [",".join(columns)]
+        for idx in row_indices:
+            if idx < len(df):
+                vals = [str(df[col][idx]) for col in columns]
+                lines.append(",".join(vals))
 
         context = f"""Knowledge graph exploration for {anchor_type}: '{anchor_value}'
-Found {len(data_rows)} data rows across {len(matched_nodes)} graph nodes.
+Found {len(matched_nodes)} matching graph nodes, {len(row_indices)} data rows.
 
 Data (CSV):
-{chr(10).join(lines[:201])}
+{chr(10).join(lines)}
 """
 
         anchor_label = "guest molecule" if anchor_type == "guest" else "zeolite"
         system_prompt = f"""You are a materials science expert analyzing zeolite diffusion data from a knowledge graph.
 
-The data below shows data extracted from the knowledge graph anchored on {anchor_label} '{anchor_value}'.
+The data below was extracted from the knowledge graph anchored on {anchor_label} '{anchor_value}'.
 
 Output format:
-1. Overview: Summarize the key diffusion characteristics of this {anchor_label}.
+1. Overview: Summarize key diffusion characteristics of this {anchor_label}. How many zeolites/data points?
 2. Ranking: Rank the top zeolites/guests by diffusion performance. Explain WHY.
-3. Patterns: What patterns do you observe? (pore size effects, temperature sensitivity, ion exchange, etc.)
-4. Notable findings: Any outliers or surprising results. Mention data gaps.
+3. Patterns: Pore size effects, temperature sensitivity, ion exchange effects.
+4. Notable findings: Outliers, surprising results, data gaps.
 
 Rules:
 - Cite specific diffusion coefficient values and DOIs from the data
-- Note whether data comes from computational (MD) or experimental methods
+- Note whether data is computational (MD) or experimental
 - Do not invent data not present in the provided context"""
 
         messages = [
@@ -656,7 +655,7 @@ Rules:
                 "graph_info": {
                     "anchor": f"{anchor_type}:{anchor_value}",
                     "node_count": len(matched_nodes),
-                    "row_count": len(data_rows),
+                    "row_count": len(row_indices),
                     "source": "knowledge_graph_fallback",
                 }
             }
@@ -668,69 +667,77 @@ Rules:
                                               guest_list: List[str]) -> Dict[str, Any]:
         """Fallback domain analysis using the CSV-built knowledge_graph.
 
-        Searches for ALL guests in the domain and merges their data for a complete picture.
+        Searches for ALL guests in the domain and merges their row data via edges.
         """
         if len(self.knowledge_graph.nodes()) == 0:
             return {"error": "Knowledge graph is empty — load data first"}
 
-        all_data_rows = []
-        all_matched = 0
+        all_seen_rows = set()
         found_guests = []
+        total_matched = 0
 
         for anchor_value in guest_list[:5]:
             anchor_lower = anchor_value.lower()
-            seen_rows = set()
+            guest_matched = 0
             for node_id in self.knowledge_graph.nodes():
                 node_data = self.knowledge_graph.nodes[node_id]
                 node_value = str(node_data.get('value', node_id)).lower()
                 if anchor_lower in node_value:
-                    if node_id not in seen_rows:
-                        seen_rows.add(node_id)
-                        all_matched += 1
-                        if 'row_index' in node_data:
-                            all_data_rows.append(node_data)
-            if seen_rows:
+                    guest_matched += 1
+                    total_matched += 1
+                    # Collect row indices from adjacent edges
+                    for _, neighbor, edge_data in self.knowledge_graph.edges(node_id, data=True):
+                        attrs = edge_data.get('attributes', edge_data)
+                        if isinstance(attrs, dict) and 'row_index' in attrs:
+                            all_seen_rows.add(attrs['row_index'])
+                    for pred, _, edge_data in self.knowledge_graph.in_edges(node_id, data=True):
+                        attrs = edge_data.get('attributes', edge_data)
+                        if isinstance(attrs, dict) and 'row_index' in attrs:
+                            all_seen_rows.add(attrs['row_index'])
+            if guest_matched > 0:
                 found_guests.append(anchor_value)
 
-        if not all_data_rows:
-            return {"error": f"No matching data found in knowledge graph for: {guest_list}"}
+        if not all_seen_rows:
+            return {"error": f"No row data found for domain guests: {guest_list}"}
 
-        logger.info(f"Domain fallback: {len(all_data_rows)} rows across {all_matched} nodes "
+        logger.info(f"Domain fallback: {len(all_seen_rows)} rows across {total_matched} nodes "
                     f"for guests: {found_guests}")
 
-        # Build CSV context
-        all_keys = set()
-        for row in all_data_rows:
-            all_keys.update(k for k in row.keys() if not k.startswith('_'))
+        df = getattr(self, '_df', None)
+        if df is None:
+            return {"error": "DataFrame reference not available"}
 
-        lines = [",".join(sorted(all_keys))]
-        for row in all_data_rows[:300]:
-            vals = [str(row.get(k, '')) for k in sorted(all_keys)]
-            lines.append(",".join(vals))
+        row_indices = sorted(all_seen_rows)[:300]
+        columns = list(df.columns)
+        lines = [",".join(columns)]
+        for idx in row_indices:
+            if idx < len(df):
+                vals = [str(df[col][idx]) for col in columns]
+                lines.append(",".join(vals))
 
         context = f"""Domain exploration for: {', '.join(guest_list[:5])}
 Guests found in data: {', '.join(found_guests)}
-Total matching rows: {len(all_data_rows)}
+Total matching rows: {len(row_indices)}
 
 Data (CSV):
-{chr(10).join(lines[:301])}
+{chr(10).join(lines)}
 """
 
         system_prompt = f"""You are a materials science expert analyzing zeolite diffusion data across a domain.
 
-The user asked about a DOMAIN (not a single molecule). The data below spans these related guest molecules: {', '.join(found_guests)}.
+The user asked about a DOMAIN. The data below spans these related guest molecules: {', '.join(found_guests)}.
 
 Output format:
-1. Domain overview: What guest molecules and zeolites are involved? What does the data cover?
-2. Cross-guest comparison: How do diffusion characteristics differ between the guests? Which guest/zeolite combinations stand out?
-3. Best candidates: For the user's goal (purification/separation/removal), which zeolites perform best? Consider ALL guests together.
-4. Patterns: Pore size effects, temperature sensitivity, guest size correlations across the domain.
-5. Data gaps: What key guests or zeolite types are MISSING?
+1. Domain overview: What guests/zeolites are involved? What does the data cover?
+2. Cross-guest comparison: How do diffusion characteristics differ between guests?
+3. Best candidates: For the user's goal, which zeolites perform best across all relevant guests?
+4. Patterns: Pore size effects, temperature sensitivity across the domain.
+5. Data gaps: What key guests or zeolites are MISSING?
 
 Rules:
 - Synthesize across ALL guests — do NOT focus on just one
-- Cite specific diffusion coefficients, temperatures, and DOIs
-- Note which data is experimental vs computational (MD)
+- Cite specific diffusion coefficients and DOIs
+- Note which data is experimental vs computational
 - Do not invent data not present in the provided context"""
 
         messages = [
@@ -752,8 +759,8 @@ Rules:
                 "visualizations": [],
                 "graph_info": {
                     "anchor": f"domain:{','.join(found_guests)}",
-                    "node_count": all_matched,
-                    "row_count": len(all_data_rows),
+                    "node_count": total_matched,
+                    "row_count": len(row_indices),
                     "source": "knowledge_graph_domain_fallback",
                 }
             }
