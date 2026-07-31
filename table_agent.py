@@ -354,17 +354,6 @@ You MUST:
             # Keep context focused: send only filtered table data (no overview paragraph)
             enhanced_context = f"""{data_table}
 
-========================================
-COMPARISON NOTE FOR LLM
-========================================
-- Computational (MD/MC/DFT) diffusion coefficients are typically SEVERAL ORDERS OF MAGNITUDE larger
-  than experimental measurements (PFG NMR, QENS, permeation, uptake). Do NOT compare raw D values
-  across different method categories — rank within the same method type or use log-scale aggregation.
-- When ranking, prioritize experimental data over computational predictions when both are available
-  for the same zeolite/molecule system.
-- Check the 'method_category' and 'experimental_method' columns to distinguish data sources.
-========================================
-
 {material_constraint}"""
             
             # Append Tier 2 predictions to context if fetched
@@ -393,17 +382,6 @@ COMPARISON NOTE FOR LLM
                 logger.info(f"Reducing to {reduced_rows} rows")
                 data_table = self._generate_data_table(filtered_data, max_rows=reduced_rows)
                 enhanced_context = f"""{data_table}
-
-========================================
-COMPARISON NOTE FOR LLM
-========================================
-- Computational (MD/MC/DFT) diffusion coefficients are typically SEVERAL ORDERS OF MAGNITUDE larger
-  than experimental measurements (PFG NMR, QENS, permeation, uptake). Do NOT compare raw D values
-  across different method categories — rank within the same method type or use log-scale aggregation.
-- When ranking, prioritize experimental data over computational predictions when both are available
-  for the same zeolite/molecule system.
-- Check the 'method_category' and 'experimental_method' columns to distinguish data sources.
-========================================
 
 {material_constraint}"""
                 logger.info(f"✓ Context length after reduction: {len(enhanced_context)} chars")
@@ -1024,7 +1002,7 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         if temperature_col:
             filtered_rows = self._filter_similar_temperature(
                 filtered_rows, temperature_col, material_col, zeolite_col, materials,
-                source_data=source_data, task_cols=task_cols
+                source_data=source_data
             )
             logger.info(f"{len(filtered_rows)} rows remaining after temperature pairing")
         else:
@@ -1134,15 +1112,13 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         # Fallback: hardcoded column search if task_cols didn't provide them
         if not value_col:
             for col in data.columns:
-                if ('diffusion_coefficient_value' in col.lower()
-                    or 'converted_value' in col.lower()
+                if ('converted_value' in col.lower()
                     or col.lower() == 'value'):
                     value_col = col
                     break
         if not unit_col:
             for col in data.columns:
-                if ('diffusion_coefficient_unit' in col.lower()
-                    or 'converted_unit' in col.lower()
+                if ('converted_unit' in col.lower()
                     or col.lower() == 'unit'):
                     unit_col = col
                     break
@@ -1150,7 +1126,7 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         if not value_col:
             logger.warning("Diffusion coefficient column not found, cannot calculate difference")
             return rows
-        
+
         logger.info(f"Using diffusion coefficient column: {value_col}, unit column: {unit_col}")
         
         # Group by zeolite
@@ -1229,10 +1205,10 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
                     if matched:
                         if material not in material_data:
                             material_data[material] = []
-                        
+
                         # Create unique key to prevent duplicates (zeolite+material+temp+value)
                         entry_key = (zeolite_name, material, round(temp_value, 2), round(value_num, 25))
-                        
+
                         if entry_key not in seen_material_entries:
                             seen_material_entries[entry_key] = True
                             material_data[material].append((idx, temp_value, value_num))
