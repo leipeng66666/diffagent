@@ -6,9 +6,9 @@ if _APP_DIR in sys.path:
     sys.path.remove(_APP_DIR)
 sys.path.insert(0, _APP_DIR)
 
-os.environ.setdefault("OPENAI_API_KEY", "sk-07230ef01ada4a7caa891eaa1ddf355a")
+import test_env  # noqa: F401  -- loads OPENAI_API_KEY, see test_env.py
 os.environ.setdefault("OPENAI_BASE_URL", "https://api.deepseek.com/v1")
-os.environ.setdefault("OPENAI_MODEL", "deepseek-v4-pro")
+os.environ.setdefault("OPENAI_MODEL", "deepseek-flash")
 
 from table_agent import TableAgent
 

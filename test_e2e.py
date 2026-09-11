@@ -9,9 +9,9 @@ sys.dont_write_bytecode = True
 if hasattr(sys.stdout, 'buffer'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-os.environ["OPENAI_API_KEY"] = "sk-07230ef01ada4a7caa891eaa1ddf355a"
+import test_env  # noqa: F401  -- loads OPENAI_API_KEY, see test_env.py
 os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com/v1"
-os.environ["OPENAI_MODEL"] = "deepseek-v4-pro"
+os.environ["OPENAI_MODEL"] = "deepseek-flash"
 
 from config import settings
 settings.OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]

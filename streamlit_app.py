@@ -32,7 +32,7 @@ def _load_api_settings():
             load_dotenv()
         except ImportError:
             pass
-    defaults = {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "https://api.deepseek.com/v1", "OPENAI_MODEL": "deepseek-v4-pro"}
+    defaults = {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "https://api.deepseek.com/v1", "OPENAI_MODEL": "deepseek-flash"}
     for key, default in defaults.items():
         if key not in s:
             s[key] = os.environ.get(key, default)

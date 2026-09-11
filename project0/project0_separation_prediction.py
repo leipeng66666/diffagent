@@ -53,7 +53,7 @@ ZEOLITE_CACHE_FILE = CACHE_DIR / "zeolite_metadata_cache.json"
 REPORT_FILE = OUTPUT_DIR / "prediction_report.md"
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek")
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "deepseek-v4-pro")
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "deepseek-flash")
 LLM_API_KEY = os.getenv("LLM_API_KEY", os.getenv("OPENAI_API_KEY", ""))
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 TOP_K_DEFAULT = 5

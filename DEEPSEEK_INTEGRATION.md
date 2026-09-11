@@ -2,14 +2,14 @@
 
 ## Overview
 
-This project uses DeepSeek (`deepseek-v4-pro`) as the LLM backend via the OpenAI-compatible API.
+This project uses DeepSeek (`deepseek-flash`) as the LLM backend via the OpenAI-compatible API.
 
 ## Configuration
 
 ```python
 OPENAI_API_KEY="your_api_key_here"
 OPENAI_BASE_URL="https://api.deepseek.com/v1"
-OPENAI_MODEL="deepseek-v4-pro"
+OPENAI_MODEL="deepseek-flash"
 ```
 
 ## Features

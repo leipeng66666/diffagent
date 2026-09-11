@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # API configuration
     OPENAI_API_KEY: str = ""  # Set via .env file — do NOT hardcode keys
     OPENAI_BASE_URL: str = "https://api.deepseek.com/v1"
-    OPENAI_MODEL: str = "deepseek-v4-pro"
+    OPENAI_MODEL: str = "deepseek-flash"
     
     # Vector database configuration
     VECTOR_DB_PATH: str = "./data/vector_db"

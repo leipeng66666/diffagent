@@ -102,7 +102,7 @@ class PredictionIntegrator:
             logger.info(f"PredictionIntegrator: loaded {len(self._repository.dataframe)} records from Project0 DB")
 
             self._llm_client = LLMClient(
-                model=self._model or "deepseek-v4-pro",
+                model=self._model or "deepseek-flash",
                 api_key=self._api_key,
                 base_url=self._base_url,
             )

@@ -28,7 +28,7 @@ ANTHROPIC_MODEL = "claude-sonnet-4-6"
 # OpenAI 兼容配置（DeepSeek）
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")  # Set via .env file
 OPENAI_BASE_URL = "https://api.deepseek.com"
-OPENAI_MODEL = "deepseek-v4-pro"
+OPENAI_MODEL = "deepseek-flash"
 
 # 通用配置
 MAX_TOKENS = 8192

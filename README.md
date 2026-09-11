@@ -97,7 +97,7 @@ python run.py
 ### DeepSeek 集成 ⭐
 本项目使用 DeepSeek 作为大语言模型后端，提供强大的中英文理解和生成能力：
 
-- **模型**: deepseek-v4-pro
+- **模型**: deepseek-flash
 - **API**: https://api.deepseek.com/v1 (OpenAI 兼容接口)
 - **优势**:
   - 优秀的中英双语理解能力
@@ -110,7 +110,7 @@ python run.py
 # DeepSeek API configuration
 OPENAI_API_KEY=your_api_key_here
 OPENAI_BASE_URL=https://api.deepseek.com/v1
-OPENAI_MODEL=deepseek-v4-pro
+OPENAI_MODEL=deepseek-flash
 
 # 向量数据库配置
 VECTOR_DB_PATH=./data/vector_db
