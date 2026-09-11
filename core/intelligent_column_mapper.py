@@ -178,7 +178,7 @@ Return ONLY valid JSON:
                 {"role": "user", "content": prompt}
             ]
             response = self.client.chat.completions.create(
-                model=self.model, messages=messages, temperature=0, max_tokens=2000
+                model=self.model, messages=messages, temperature=0, max_tokens=8000
             )
             result_text = response.choices[0].message.content.strip()
             if "```json" in result_text:
@@ -273,7 +273,7 @@ Examples:
                 {"role": "user", "content": prompt}
             ]
             response = self.client.chat.completions.create(
-                model=self.model, messages=messages, temperature=0, max_tokens=2000
+                model=self.model, messages=messages, temperature=0, max_tokens=8000
             )
             result_text = response.choices[0].message.content.strip()
             if "```json" in result_text:

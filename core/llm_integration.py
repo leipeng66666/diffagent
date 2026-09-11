@@ -14,7 +14,7 @@ class LLMIntegration:
         """Initialize LLM integration"""
         self.api_key = api_key or settings.OPENAI_API_KEY
         self.base_url = base_url or "https://api.deepseek.com/v1"
-        self.model = model or "deepseek-v4-pro"
+        self.model = model or "deepseek-flash"
         
         # Configure OpenAI client
         self.client = OpenAI(
@@ -379,12 +379,19 @@ Please write objectively and professionally.
     def _call_llm(self, messages: List[Dict], response_type: str) -> Dict[str, Any]:
         """Call LLM and process response"""
         # Set max tokens based on response type (increased to support more detailed responses)
+        #
+        # NOTE: the backend models are REASONING models -- their thinking tokens
+        # count against max_tokens. A full comparison query over a 20k-char
+        # context was observed spending ~18k tokens (17.7k reasoning + ~1k
+        # content), so the old 8000 cap made it burn the whole budget thinking
+        # and return an EMPTY string with finish_reason='length'. Keep these
+        # budgets well above the observed reasoning cost.
         if response_type == "analysis":
-            max_tokens = 8000
+            max_tokens = 32000
         elif response_type == "visualization":
-            max_tokens = 4000
+            max_tokens = 16000
         else:
-            max_tokens = 4000
+            max_tokens = 16000
         
         while True:
             try:
@@ -411,8 +418,21 @@ Please write objectively and professionally.
                 else:
                     raise e
         
+        content = response.choices[0].message.content
+        finish = response.choices[0].finish_reason
+        if not content:
+            # Do not let this fail silently again -- an empty answer used to
+            # reach the UI with no error at all.
+            logger.error(
+                f"LLM returned empty content (finish_reason={finish}, "
+                f"max_tokens={max_tokens}, "
+                f"completion_tokens={response.usage.completion_tokens}). "
+                f"If finish_reason='length' the reasoning budget was exhausted -- "
+                f"raise max_tokens."
+            )
+
         return {
-            "content": response.choices[0].message.content,
+            "content": content,
             "prompt_tokens": response.usage.prompt_tokens,
             "completion_tokens": response.usage.completion_tokens,
             "total_tokens": response.usage.prompt_tokens + response.usage.completion_tokens

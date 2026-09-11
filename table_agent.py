@@ -342,11 +342,18 @@ class TableAgent:
             material_constraint = ""
             if parsed_query.get("comparison_info") and parsed_query["comparison_info"].get("materials"):
                 materials_list = parsed_query["comparison_info"]["materials"]
+                # NOTE: do NOT hardcode example "other" materials here. The old
+                # text listed "nitrogen" as an example of a forbidden material,
+                # so a query *about* nitrogen was told in one line to use it and
+                # in the next that mentioning it was strictly forbidden. The
+                # model resolved the contradiction by denying the entire table
+                # existed -- the N2/O2 answer claimed zero N2/O2 pairs were
+                # present when 19 zeolites were ranked right above it.
                 material_constraint = f"""
 ⚠️⚠️⚠️ STRICT LIMITATION ⚠️⚠️⚠️
 You MUST:
 1. Only use data from the following materials: {', '.join(materials_list)}
-2. Strictly forbidden to analyze or mention other materials (such as nitrogen, sodium ion, sodium, mixtures, etc.)
+2. Strictly forbidden to analyze or mention other materials
 3. If other materials appear in the data table below, ignore them directly
 4. Only answer based on the data table below, do not use other information
 """
@@ -1002,7 +1009,7 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
         if temperature_col:
             filtered_rows = self._filter_similar_temperature(
                 filtered_rows, temperature_col, material_col, zeolite_col, materials,
-                source_data=source_data
+                source_data=source_data, task_cols=task_cols
             )
             logger.info(f"{len(filtered_rows)} rows remaining after temperature pairing")
         else:
@@ -1109,17 +1116,25 @@ If a term has no match, omit it. Match chemical formulas to full names (CO2→ca
             value_col = None
             unit_col = None
 
-        # Fallback: hardcoded column search if task_cols didn't provide them
+        # Fallback: hardcoded column search if task_cols didn't provide them.
+        # NOTE: this CSV family names the column `diffusion_coefficient_value`,
+        # which neither `converted_value` nor an exact `value` matches -- the
+        # original two-way test silently failed and returned unpaired rows, so
+        # no ranking table was ever built. Match the diffusion column explicitly.
         if not value_col:
             for col in data.columns:
-                if ('converted_value' in col.lower()
-                    or col.lower() == 'value'):
+                c = col.lower()
+                if ('converted_value' in c
+                    or c == 'value'
+                    or ('diffusion' in c and c.endswith('_value'))):
                     value_col = col
                     break
         if not unit_col:
             for col in data.columns:
-                if ('converted_unit' in col.lower()
-                    or col.lower() == 'unit'):
+                c = col.lower()
+                if ('converted_unit' in c
+                    or c == 'unit'
+                    or ('diffusion' in c and c.endswith('_unit'))):
                     unit_col = col
                     break
         
