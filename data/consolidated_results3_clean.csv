@@ -1224,8 +1224,8 @@ S037673881932112X,10.1016/j.memsci.2019.117534,nitrogen,,SAPO-34,CHA,0.2,,,,1.8e
 S037673881932112X,10.1016/j.memsci.2019.117534,methane,,SAPO-34,CHA,0.2,,,,2e-11,m2/s,298.0,K,,,,,,,,,,
 S0376738820306128,10.1016/j.memsci.2020.118033,ethene,,AHT,AHT,,,,,3.82e-10,m2/s,298.0,K,,,,,,,Molecular Dynamics,,Computational,MD
 S0376738820306128,10.1016/j.memsci.2020.118033,ethane,,AHT,AHT,,,,,5.98e-12,m2/s,298.0,K,,,,,,,Molecular Dynamics,,Computational,MD
-S0376738820313259,10.1016/j.memsci.2020.118749,water,,NaA,LTA-Na,,,,,2.42e-09,m2/s,,°C,5月30日,wt%,,,1,bar,Pervaporation,range_endpoint: minimum,Experimental,Membrane Permeation
-S0376738820313259,10.1016/j.memsci.2020.118749,water,,NaA,LTA-Na,,,,,1.41e-08,m2/s,,°C,5月30日,wt%,,,1,bar,Pervaporation,range_endpoint: maximum,Experimental,Membrane Permeation
+S0376738820313259,10.1016/j.memsci.2020.118749,water,,NaA,LTA-Na,,,,,2.42e-09,m2/s,,°C,5–30,wt%,,,1,bar,Pervaporation,range_endpoint: minimum,Experimental,Membrane Permeation
+S0376738820313259,10.1016/j.memsci.2020.118749,water,,NaA,LTA-Na,,,,,1.41e-08,m2/s,,°C,5–30,wt%,,,1,bar,Pervaporation,range_endpoint: maximum,Experimental,Membrane Permeation
 S0376738821002192,10.1016/j.memsci.2021.119269,nitrogen,,silicalite-1,MFI-H,,,,,7.72e-08,m2/s,295.0,K,,,,,,,Single gas permeation (corrected diffusivity method),dataset: average,Experimental,Membrane Permeation
 S0376738821002192,10.1016/j.memsci.2021.119269,carbon dioxide,,silicalite-1,MFI-H,,,,,1.69e-08,m2/s,295.0,K,,,,,,,Single gas permeation (corrected diffusivity method),dataset: average,Experimental,Membrane Permeation
 S0376738821002192,10.1016/j.memsci.2021.119269,methane,,silicalite-1,MFI-H,,,,,6.51e-08,m2/s,295.0,K,,,,,,,Single gas permeation (corrected diffusivity method),dataset: average,Experimental,Membrane Permeation
@@ -2132,12 +2132,12 @@ S138718110800053X,10.1016/j.micromeso.2008.01.042,DIPB,,MOR,MOR,,,,,1.78e-10,m2/
 S138718110800053X,10.1016/j.micromeso.2008.01.042,"1,3,5-triisopropylbenzene",,MOR,MOR,,,,,4e-11,m2/s,300.0,K,,,,,,,Molecular Dynamics,,Computational,MD
 S138718110800053X,10.1016/j.micromeso.2008.01.042,DIPB,,IM-12,UTL-H,,,,,3.03e-10,m2/s,300.0,K,,,0.5,molecule/unit cell,,,Molecular Dynamics,,Computational,MD
 S138718110800053X,10.1016/j.micromeso.2008.01.042,"1,3,5-triisopropylbenzene",,IM-12,UTL-H,,,,,8.83e-10,m2/s,300.0,K,,,0.5,molecule/unit cell,,,Molecular Dynamics,,Computational,MD
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,2.81e-17,m2/s,298.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.2e-14,m2/s,425.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.61e-14,m2/s,448.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,2.81e-14,m2/s,473.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,4.55e-14,m2/s,523.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
-S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.04e-13,m2/s,600.0,K,,,1月4日,mol/u.c.,,,gravimetric uptake (Fickian analysis),estimation: Arrhenius extrapolation,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,2.81e-17,m2/s,298.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.2e-14,m2/s,425.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.61e-14,m2/s,448.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,2.81e-14,m2/s,473.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,4.55e-14,m2/s,523.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),,Experimental,Uptake/Release
+S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.04e-13,m2/s,600.0,K,,,1–4,mol/u.c.,,,gravimetric uptake (Fickian analysis),estimation: Arrhenius extrapolation,Experimental,Uptake/Release
 S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,6.33e-15,m2/s,600.0,K,,,4,mol/u.c.,,,Molecular Dynamics (MD) simulation,,Computational,MD
 S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,1.15e-14,m2/s,600.0,K,,,5,mol/u.c.,,,Molecular Dynamics (MD) simulation,,Computational,MD
 S1387181108000735,10.1016/j.micromeso.2008.01.047,2-methoxy-2-methylpropane,,silicalite-1,MFI-H,,,,,3.37e-14,m2/s,600.0,K,,,6,mol/u.c.,,,Molecular Dynamics (MD) simulation,,Computational,MD
