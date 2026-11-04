@@ -54,7 +54,9 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 # ── Cached TableAgent ──
-_APP_VERSION = "v22"
+# Bump this whenever data/consolidated_cleand.csv changes, so the cached
+# @st.cache_resource agent (and therefore the loaded dataframe) is rebuilt.
+_APP_VERSION = "v23"
 
 @st.cache_resource(show_spinner="Loading embedding model & building knowledge graph…")
 def get_table_agent(cache_version: str):
